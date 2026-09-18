@@ -1,0 +1,2421 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Patient Zero — Your Health Records</title>
+<style>
+  /* ============================================================
+     THEME SYSTEM — dynamically switched by JS
+     ============================================================ */
+  :root{
+    --primary: #0b5fa5;
+    --primary-dark: #084a82;
+    --primary-light: #e8f2fb;
+    --accent: #1e88e5;
+    --bg: #f4f7fb;
+    --white: #ffffff;
+    --line: #d6e2ee;
+    --text: #1e2a3a;
+    --muted: #64748b;
+    --good: #16a34a;
+    --good-bg: #e7f7ec;
+    --warn: #d97706;
+    --warn-bg: #fff7e6;
+    --bad: #dc2626;
+    --bad-bg: #fdecec;
+    --radius: 12px;
+    --shadow-sm: 0 1px 3px rgba(11,95,165,.08);
+    --shadow-md: 0 6px 20px rgba(11,95,165,.12);
+    --shadow-lg: 0 20px 60px rgba(11,95,165,.25);
+  }
+  /* Theme variants */
+  body[data-theme="mint"]{
+    --primary: #0d7a5f;
+    --primary-dark: #0a5f4a;
+    --primary-light: #e6f5f1;
+    --accent: #14b8a6;
+    --bg: #f2faf8;
+    --line: #cfe9e2;
+    --shadow-sm: 0 1px 3px rgba(13,122,95,.08);
+    --shadow-md: 0 6px 20px rgba(13,122,95,.12);
+    --shadow-lg: 0 20px 60px rgba(13,122,95,.25);
+  }
+  body[data-theme="violet"]{
+    --primary: #6d28d9;
+    --primary-dark: #5b21b6;
+    --primary-light: #f0eafd;
+    --accent: #8b5cf6;
+    --bg: #f8f5ff;
+    --line: #ddd0f5;
+    --shadow-sm: 0 1px 3px rgba(109,40,217,.08);
+    --shadow-md: 0 6px 20px rgba(109,40,217,.12);
+    --shadow-lg: 0 20px 60px rgba(109,40,217,.25);
+  }
+  body[data-theme="sunset"]{
+    --primary: #c2410c;
+    --primary-dark: #9a3412;
+    --primary-light: #fff1e7;
+    --accent: #f97316;
+    --bg: #fffaf5;
+    --line: #f5d9c5;
+    --shadow-sm: 0 1px 3px rgba(194,65,12,.08);
+    --shadow-md: 0 6px 20px rgba(194,65,12,.12);
+    --shadow-lg: 0 20px 60px rgba(194,65,12,.25);
+  }
+  body[data-theme="midnight"]{
+    --primary: #1e3a8a;
+    --primary-dark: #1e40af;
+    --primary-light: #e0e7ff;
+    --accent: #3b82f6;
+    --bg: #f5f7ff;
+    --line: #c7d2fe;
+    --shadow-sm: 0 1px 3px rgba(30,58,138,.08);
+    --shadow-md: 0 6px 20px rgba(30,58,138,.12);
+    --shadow-lg: 0 20px 60px rgba(30,58,138,.25);
+  }
+  /* Account type themes */
+  body[data-account="doctor"]{
+    --primary: #0f766e;
+    --primary-dark: #115e59;
+    --primary-light: #d1fae5;
+    --accent: #10b981;
+  }
+  body[data-account="patient"]{
+    --primary: #0b5fa5;
+    --primary-dark: #084a82;
+    --primary-light: #e8f2fb;
+    --accent: #1e88e5;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;
+    font-size:15px;line-height:1.5;}
+  button{font-family:inherit;cursor:pointer}
+
+  /* ============ PAGE SYSTEM ============ */
+  .page{display:none;min-height:100vh;flex-direction:column}
+  .page.active{display:flex}
+
+  /* ============ ANIMATED INTRO ============ */
+  .intro-page{
+    background:linear-gradient(160deg,#0b5fa5 0%,#1e88e5 55%,#e8f2fb 100%);
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;padding:40px 20px;position:relative;overflow:hidden;
+  }
+  .intro-page .bg-circles{position:absolute;inset:0;pointer-events:none}
+  .intro-page .bg-circles span{
+    position:absolute;border-radius:50%;background:rgba(255,255,255,.08);
+    animation:float 8s ease-in-out infinite;
+  }
+  .intro-page .bg-circles span:nth-child(1){width:200px;height:200px;top:10%;left:5%;animation-delay:0s}
+  .intro-page .bg-circles span:nth-child(2){width:150px;height:150px;top:60%;right:8%;animation-delay:2s}
+  .intro-page .bg-circles span:nth-child(3){width:100px;height:100px;top:30%;right:20%;animation-delay:4s}
+  .intro-page .bg-circles span:nth-child(4){width:250px;height:250px;bottom:-50px;left:30%;animation-delay:1s}
+  @keyframes float{
+    0%,100%{transform:translateY(0) scale(1)}
+    50%{transform:translateY(-20px) scale(1.05)}
+  }
+  .intro-content{
+    position:relative;z-index:2;text-align:center;color:#fff;max-width:900px;
+  }
+  .intro-content h1{
+    font-size:44px;font-weight:800;margin-bottom:16px;
+    text-shadow:0 4px 20px rgba(0,0,0,.2);animation:fadeUp .8s ease;
+  }
+  .intro-content p.lead{
+    font-size:18px;opacity:.9;margin-bottom:40px;max-width:600px;margin-left:auto;margin-right:auto;
+    animation:fadeUp .8s ease .1s both;
+  }
+  @keyframes fadeUp{
+    from{opacity:0;transform:translateY(20px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+
+  /* Document animation */
+  .doc-anim{
+    display:flex;justify-content:center;gap:24px;margin-bottom:48px;flex-wrap:wrap;
+  }
+  .doc-card-anim{
+    width:140px;height:180px;background:#fff;border-radius:14px;
+    padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.25);
+    display:flex;flex-direction:column;gap:8px;position:relative;
+    animation:docFloat 3s ease-in-out infinite;
+  }
+  .doc-card-anim:nth-child(1){animation-delay:0s;transform:rotate(-6deg)}
+  .doc-card-anim:nth-child(2){animation-delay:.3s;transform:rotate(0deg) translateY(-15px);z-index:2}
+  .doc-card-anim:nth-child(3){animation-delay:.6s;transform:rotate(6deg)}
+  @keyframes docFloat{
+    0%,100%{transform:translateY(0) rotate(var(--rot,0deg))}
+    50%{transform:translateY(-12px) rotate(var(--rot,0deg))}
+  }
+  .doc-card-anim .doc-icon{font-size:36px;text-align:center;margin-bottom:8px}
+  .doc-card-anim .doc-line{
+    height:6px;border-radius:3px;background:#e2e8f0;
+  }
+  .doc-card-anim .doc-line.short{width:60%}
+  .doc-card-anim .doc-line.blue{background:var(--accent);width:80%}
+  .doc-card-anim .doc-badge{
+    position:absolute;top:-8px;right:-8px;background:var(--good);
+    color:#fff;font-size:10px;font-weight:700;padding:4px 8px;border-radius:20px;
+    box-shadow:0 4px 12px rgba(22,163,74,.4);
+  }
+  .doc-card-anim .scan-line{
+    position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    top:0;animation:scan 2.5s ease-in-out infinite;border-radius:2px;
+  }
+  @keyframes scan{
+    0%{top:0;opacity:1}
+    100%{top:100%;opacity:0}
+  }
+
+  .intro-features{
+    display:flex;gap:20px;justify-content:center;margin-bottom:40px;flex-wrap:wrap;
+    animation:fadeUp .8s ease .2s both;
+  }
+  .intro-feature{
+    background:rgba(255,255,255,.15);backdrop-filter:blur(8px);
+    padding:14px 22px;border-radius:40px;font-size:14px;font-weight:600;
+    display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.2);
+  }
+  .intro-feature i{font-size:16px}
+
+  .get-started-btn{
+    background:#ffc107;color:#1e2a3a;border:none;
+    padding:18px 56px;border-radius:60px;font-size:18px;font-weight:800;
+    box-shadow:0 12px 40px rgba(255,193,7,.5);
+    transition:.2s;animation:fadeUp .8s ease .4s both;
+    display:inline-flex;align-items:center;gap:12px;
+  }
+  .get-started-btn:hover{
+    transform:translateY(-3px) scale(1.02);
+    box-shadow:0 18px 50px rgba(255,193,7,.6);
+  }
+  .get-started-btn i{font-size:22px}
+
+  /* ============ AUTH PAGE ============ */
+  .auth-page{
+    background:linear-gradient(160deg,var(--primary) 0%,var(--accent) 55%,var(--primary-light) 100%);
+    min-height:100vh;display:grid;place-items:center;padding:20px;
+  }
+  .auth-card{
+    width:100%;max-width:460px;background:var(--white);
+    border-radius:20px;padding:36px;box-shadow:var(--shadow-lg);
+  }
+  .auth-card .logo-lg{
+    width:64px;height:64px;border-radius:16px;margin:0 auto 18px;
+    background:linear-gradient(135deg,var(--primary),var(--accent));
+    display:grid;place-items:center;color:#fff;font-weight:800;font-size:22px;
+  }
+  .auth-card h1{font-size:22px;text-align:center;margin:0 0 6px;color:var(--primary)}
+  .auth-card p.sub{color:var(--muted);font-size:14px;text-align:center;margin:0 0 26px}
+
+  /* Auth method tabs */
+  .auth-methods{
+    display:flex;gap:6px;margin-bottom:22px;background:var(--primary-light);
+    padding:5px;border-radius:12px;
+  }
+  .auth-method{
+    flex:1;padding:10px;border:none;background:transparent;
+    font-size:12px;font-weight:700;color:var(--muted);border-radius:9px;
+    transition:.15s;display:flex;flex-direction:column;align-items:center;gap:3px;
+  }
+  .auth-method .ico{font-size:18px}
+  .auth-method.active{background:#fff;color:var(--primary);box-shadow:var(--shadow-sm)}
+  .auth-method:hover{color:var(--primary)}
+
+  .auth-panel{display:none}
+  .auth-panel.active{display:block;animation:fadeUp .3s ease}
+
+  .form-group{margin-bottom:16px}
+  .form-group label{display:block;font-size:13px;color:var(--text);margin-bottom:6px;font-weight:600}
+  .form-group input,.form-group select,.form-group textarea{
+    width:100%;padding:13px 15px;border-radius:10px;border:2px solid var(--line);
+    background:#fafcfe;color:var(--text);font-size:15px;outline:none;
+    transition:.15s;font-family:inherit;
+  }
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus{
+    border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(30,136,229,.15)}
+  .form-group textarea{resize:vertical;min-height:80px}
+  .required{color:var(--bad)}
+
+  .btn{
+    padding:12px 24px;border-radius:10px;font-size:15px;font-weight:700;
+    border:none;background:var(--primary);color:#fff;transition:.15s;
+    display:inline-flex;align-items:center;gap:8px;justify-content:center;
+  }
+  .btn:hover{background:var(--primary-dark);transform:translateY(-1px)}
+  .btn.primary{background:linear-gradient(135deg,var(--primary),var(--accent))}
+  .btn.outline{background:#fff;color:var(--primary);border:2px solid var(--primary)}
+  .btn.outline:hover{background:var(--primary-light)}
+  .btn.danger{background:var(--bad)}
+  .btn.danger:hover{background:#b91c1c}
+  .btn.full{width:100%}
+  .btn.sm{padding:8px 16px;font-size:13px}
+  .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+  .auth-submit{
+    width:100%;padding:15px;border-radius:10px;border:none;font-size:16px;font-weight:700;
+    background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;
+    transition:.15s;margin-top:4px;box-shadow:0 4px 12px rgba(11,95,165,.3);
+  }
+  .auth-submit:hover{filter:brightness(1.1);transform:translateY(-1px)}
+  .auth-err{color:var(--bad);font-size:13px;margin-top:10px;text-align:center;
+    min-height:18px;font-weight:500}
+
+  .otp-row{display:flex;gap:10px;justify-content:center;margin:18px 0}
+  .otp-input{
+    width:52px;height:58px;text-align:center;font-size:22px;font-weight:700;
+    border:2px solid var(--line);border-radius:12px;background:#fafcfe;
+    color:var(--text);outline:none;transition:.15s;
+  }
+  .otp-input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(30,136,229,.15)}
+  .otp-note{
+    text-align:center;font-size:13px;color:var(--muted);margin-top:12px;
+  }
+  .otp-note b{color:var(--primary)}
+  .demo-otp{
+    background:var(--warn-bg);border:2px dashed #fde68a;color:#78350f;
+    padding:10px 14px;border-radius:10px;font-size:13px;text-align:center;
+    margin-top:14px;
+  }
+  .demo-otp b{color:var(--warn);font-size:15px;letter-spacing:2px}
+
+  .switch-link{text-align:center;margin-top:18px;font-size:14px;color:var(--muted)}
+  .switch-link a{color:var(--accent);font-weight:600;cursor:pointer;text-decoration:none}
+  .switch-link a:hover{text-decoration:underline}
+
+  /* ============ MAIN APP ============ */
+  .topbar{
+    background:var(--primary);color:#fff;padding:0;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);position:sticky;top:0;z-index:50;
+  }
+  .topbar-inner{
+    max-width:1200px;margin:0 auto;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:12px 24px;flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:center;gap:14px;cursor:pointer}
+  .brand .logo{width:44px;height:44px;border-radius:10px;
+    background:#fff;display:grid;place-items:center;color:var(--primary);
+    font-weight:800;font-size:16px;letter-spacing:-1px}
+  .brand h1{font-size:17px;font-weight:700}
+  .brand span{display:block;font-size:12px;opacity:.85;font-weight:400}
+  .user-chip{
+    display:flex;align-items:center;gap:10px;padding:8px 14px;
+    border-radius:24px;background:rgba(255,255,255,.15);
+    font-size:14px;backdrop-filter:blur(4px);
+  }
+  .user-chip .dot{width:9px;height:9px;border-radius:50%;background:#4ade80}
+  .user-chip .name{font-weight:600}
+  .user-chip .logout{
+    background:rgba(255,255,255,.2);border:none;color:#fff;font-size:12px;
+    padding:5px 12px;border-radius:16px;margin-left:6px;font-weight:500;
+  }
+  .user-chip .logout:hover{background:rgba(255,255,255,.35)}
+
+  .nav-tabs{
+    max-width:1200px;margin:0 auto;display:flex;gap:4px;
+    padding:0 24px;overflow-x:auto;
+  }
+  .nav-tab{
+    padding:12px 20px;border:none;background:transparent;color:rgba(255,255,255,.7);
+    font-size:14px;font-weight:600;border-bottom:3px solid transparent;
+    transition:.15s;white-space:nowrap;display:flex;align-items:center;gap:8px;
+  }
+  .nav-tab:hover{color:#fff;background:rgba(255,255,255,.1)}
+  .nav-tab.active{color:#fff;border-bottom-color:#ffc107}
+
+  .content{max-width:1200px;margin:0 auto;padding:28px 24px;flex:1;width:100%}
+
+  /* ============ CARDS ============ */
+  .card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-sm);
+    border:1px solid var(--line);overflow:hidden;margin-bottom:20px}
+  .card-header{padding:18px 22px;border-bottom:2px solid var(--primary-light);
+    display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .card-header h2{font-size:16px;font-weight:700;color:var(--primary);display:flex;align-items:center;gap:8px}
+  .card-body{padding:20px 22px}
+
+  /* ============ FORMS ============ */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:700px){.form-grid{grid-template-columns:1fr}}
+  .form-group.full{grid-column:1/-1}
+
+  /* ============ DOCUMENT LIST ============ */
+  .doc-item{
+    display:flex;gap:14px;align-items:center;padding:16px;border-radius:12px;
+    border:2px solid var(--line);background:#fafcfe;margin-bottom:10px;
+    transition:.15s;
+  }
+  .doc-item:hover{border-color:var(--accent);background:#fff;box-shadow:var(--shadow-sm)}
+  .doc-item .thumb{
+    width:52px;height:52px;border-radius:10px;display:grid;place-items:center;
+    font-size:24px;flex-shrink:0;background:var(--primary-light);border:2px solid var(--line);
+  }
+  .doc-item .meta{flex:1;min-width:0}
+  .doc-item .meta b{font-size:14px;display:block;color:var(--text)}
+  .doc-item .meta small{color:var(--muted);font-size:12px;display:block;margin-top:2px}
+  .doc-item .actions{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap}
+  .doc-item .actions button{
+    background:var(--primary-light);border:none;color:var(--primary);
+    padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;
+  }
+  .doc-item .actions button:hover{background:var(--line)}
+
+  /* ============ TIMELINE ============ */
+  .tl{position:relative;padding:24px 24px 24px 48px}
+  .tl::before{content:"";position:absolute;left:30px;top:0;bottom:0;width:3px;
+    background:var(--primary-light);border-radius:2px}
+  .event{position:relative;margin-bottom:18px}
+  .event::before{content:"";position:absolute;left:-26px;top:10px;width:16px;height:16px;
+    border-radius:50%;background:var(--accent);border:3px solid #fff;
+    box-shadow:0 0 0 2px var(--primary-light)}
+  .event.med::before{background:var(--good)}
+  .event.visit::before{background:var(--warn)}
+  .event.flag::before{background:var(--bad)}
+  .event .card{background:#fafcfe;border:2px solid var(--line);border-radius:12px;
+    padding:14px 16px;cursor:pointer;transition:.15s;margin-bottom:0}
+  .event .card:hover{border-color:var(--accent);background:#fff;box-shadow:var(--shadow-sm)}
+  .event .row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .event .date{font-size:13px;color:var(--muted);font-weight:500}
+  .event .title{font-size:15px;font-weight:700;color:var(--text)}
+  .event .sub{font-size:14px;color:var(--muted);margin-top:4px;line-height:1.5}
+
+  /* ============ AI BOT ============ */
+  .ai-bot{
+    position:fixed;right:24px;bottom:24px;z-index:200;
+    display:flex;flex-direction:column;align-items:flex-end;gap:10px;
+  }
+  .ai-panel{
+    width:380px;max-width:calc(100vw - 48px);
+    background:#fff;border-radius:18px;border:2px solid var(--line);
+    box-shadow:var(--shadow-lg);overflow:hidden;
+    transform:translateY(12px) scale(.96);opacity:0;pointer-events:none;
+    transition:.25s;transform-origin:bottom right;
+    display:flex;flex-direction:column;max-height:600px;
+  }
+  .ai-panel.open{transform:translateY(0) scale(1);opacity:1;pointer-events:auto}
+  .ai-head{
+    background:linear-gradient(135deg,var(--primary),var(--accent));
+    color:#fff;padding:14px 18px;display:flex;align-items:center;gap:10px;
+  }
+  .ai-head .ai-avatar{
+    width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.25);
+    display:grid;place-items:center;font-size:18px;
+  }
+  .ai-head h3{margin:0;font-size:15px;font-weight:700;flex:1}
+  .ai-head h3 small{display:block;font-size:11px;font-weight:400;opacity:.85}
+  .ai-head .ai-close{
+    background:rgba(255,255,255,.2);border:none;color:#fff;font-size:16px;
+    width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+  }
+  .ai-head .ai-close:hover{background:rgba(255,255,255,.35)}
+
+  .ai-body{padding:16px;overflow-y:auto;flex:1;max-height:340px}
+  .ai-msg{
+    font-size:14px;line-height:1.6;color:var(--text);
+    background:#fafcfe;border:1px solid var(--line);
+    border-radius:12px;padding:12px 14px;margin-bottom:10px;
+  }
+  .ai-msg.user{
+    background:var(--primary-light);border-color:var(--line);
+    color:var(--primary-dark);font-weight:500;
+  }
+  .ai-msg.bot b{color:var(--primary)}
+  .ai-msg .ai-src{
+    display:inline-block;margin-top:6px;font-size:12px;
+    color:var(--accent);cursor:pointer;font-weight:600;
+  }
+  .ai-msg .ai-src:hover{text-decoration:underline}
+
+  .ai-actions{
+    padding:0 16px 12px;display:flex;gap:6px;flex-wrap:wrap;
+  }
+  .ai-actions button{
+    background:var(--primary-light);border:1px solid var(--line);color:var(--primary);
+    font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;
+    transition:.15s;
+  }
+  .ai-actions button:hover{background:var(--line)}
+
+  .ai-foot{
+    padding:12px 16px;border-top:1px solid var(--line);
+    display:flex;gap:8px;align-items:center;background:#fafcfe;
+  }
+  .ai-foot input{
+    flex:1;border:2px solid var(--line);border-radius:10px;
+    padding:10px 12px;font-size:14px;outline:none;font-family:inherit;
+    background:#fff;
+  }
+  .ai-foot input:focus{border-color:var(--accent)}
+  .ai-foot .mic-btn{
+    width:44px;height:44px;border-radius:50%;border:none;
+    background:var(--primary-light);color:var(--primary);
+    font-size:18px;display:grid;place-items:center;transition:.2s;
+    flex-shrink:0;
+  }
+  .ai-foot .mic-btn:hover{background:var(--line)}
+  .ai-foot .mic-btn.listening{
+    background:var(--bad);color:#fff;
+    animation:micPulse 1.2s infinite;
+  }
+  @keyframes micPulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}
+    50%{box-shadow:0 0 0 12px rgba(220,38,38,0)}
+  }
+  .ai-foot .send-btn{
+    width:44px;height:44px;border-radius:50%;border:none;
+    background:var(--primary);color:#fff;font-size:16px;
+    display:grid;place-items:center;transition:.15s;flex-shrink:0;
+  }
+  .ai-foot .send-btn:hover{background:var(--primary-dark)}
+
+  .ai-fab{
+    width:64px;height:64px;border-radius:50%;border:none;
+    background:linear-gradient(135deg,var(--primary),var(--accent));
+    color:#fff;font-size:26px;display:grid;place-items:center;
+    box-shadow:0 8px 24px rgba(11,95,165,.4);transition:.2s;
+    position:relative;
+  }
+  .ai-fab:hover{transform:scale(1.06)}
+  .ai-fab .notif-dot{
+    position:absolute;top:2px;right:2px;width:14px;height:14px;
+    background:#4ade80;border-radius:50%;border:2px solid #fff;
+  }
+
+  /* ============ MODAL ============ */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(11,60,110,.5);backdrop-filter:blur(4px);
+    z-index:300;display:grid;place-items:center;padding:24px;
+    opacity:0;pointer-events:none;transition:.25s;
+  }
+  .modal-backdrop.open{opacity:1;pointer-events:auto}
+  .modal{
+    width:100%;max-width:660px;max-height:88vh;overflow:hidden;
+    background:var(--white);border-radius:18px;
+    box-shadow:var(--shadow-lg);display:flex;flex-direction:column;
+    transform:scale(.94);transition:.25s;
+  }
+  .modal-backdrop.open .modal{transform:scale(1)}
+  .modal .head{
+    padding:20px 24px;border-bottom:2px solid var(--primary-light);
+    display:flex;justify-content:space-between;align-items:flex-start;gap:14px;
+    background:var(--primary-light);
+  }
+  .modal .head .title{font-size:17px;font-weight:700;color:var(--primary)}
+  .modal .head .meta{font-size:13px;color:var(--muted);margin-top:4px}
+  .modal .head .close{
+    background:#fff;border:2px solid var(--line);color:var(--muted);
+    font-size:22px;line-height:1;width:38px;height:38px;border-radius:50%;
+    display:grid;place-items:center;flex-shrink:0;
+  }
+  .modal .head .close:hover{border-color:var(--accent);color:var(--primary)}
+  .modal .body{padding:24px;overflow:auto;flex:1}
+
+  .kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:520px){.kv-grid{grid-template-columns:1fr}}
+  .kv{font-size:14px;padding:14px 16px;background:#fafcfe;
+    border:2px solid var(--line);border-radius:12px}
+  .kv b{color:var(--primary);display:block;font-size:11px;text-transform:uppercase;
+    letter-spacing:.8px;margin-bottom:6px;font-weight:700}
+  .kv .val{color:var(--text);font-size:16px;font-weight:600}
+
+  /* ============ EMPTY STATE ============ */
+  .empty{text-align:center;padding:60px 20px;color:var(--muted)}
+  .empty .icon{font-size:48px;margin-bottom:16px;opacity:.5}
+  .empty h3{font-size:18px;color:var(--text);margin-bottom:8px}
+  .empty p{font-size:14px;margin-bottom:20px}
+
+  /* ============ TOAST ============ */
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120px);
+    background:var(--primary);color:#fff;padding:14px 24px;
+    border-radius:12px;font-size:14px;font-weight:600;z-index:400;
+    transition:.3s;opacity:0;box-shadow:var(--shadow-md);max-width:90vw}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+  /* ============ INSIGHTS ============ */
+  .insight{border:2px solid var(--line);border-radius:12px;padding:16px;
+    margin-bottom:12px;background:#fafcfe}
+  .insight .tag{font-size:11px;text-transform:uppercase;letter-spacing:1px;
+    color:var(--primary);font-weight:700}
+  .insight .txt{font-size:14px;margin:8px 0;line-height:1.6;color:var(--text)}
+  .insight .txt b{color:var(--primary)}
+  .insight.change{border-left:5px solid var(--accent)}
+  .insight.gap{border-left:5px solid var(--warn)}
+  .insight.conflict{border-left:5px solid var(--bad)}
+  .insight.diagnosis{border-left:5px solid var(--good);background:var(--good-bg)}
+  .insight.diagnosis .tag{color:var(--good)}
+
+  /* ============ HOSPITAL SEARCH ============ */
+  .hosp-search-wrap{position:relative}
+  .hosp-search-input{
+    width:100%;padding:13px 15px;border-radius:10px;border:2px solid var(--line);
+    background:#fafcfe;color:var(--text);font-size:15px;outline:none;
+    font-family:inherit;transition:.15s;
+  }
+  .hosp-search-input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(30,136,229,.15)}
+  .hosp-suggestions{
+    position:absolute;top:100%;left:0;right:0;background:#fff;
+    border:2px solid var(--line);border-radius:12px;margin-top:4px;
+    box-shadow:var(--shadow-md);max-height:260px;overflow-y:auto;z-index:20;
+    display:none;
+  }
+  .hosp-suggestions.open{display:block}
+  .hosp-suggestion{
+    padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--line);
+    transition:.1s;display:flex;align-items:center;gap:12px;
+  }
+  .hosp-suggestion:last-child{border-bottom:none}
+  .hosp-suggestion:hover{background:var(--primary-light)}
+  .hosp-suggestion .h-icon{font-size:20px}
+  .hosp-suggestion .h-info b{display:block;font-size:14px;color:var(--text)}
+  .hosp-suggestion .h-info small{font-size:12px;color:var(--muted)}
+
+  .hosp-detail{
+    margin-top:16px;padding:18px;background:var(--primary-light);
+    border-radius:12px;border:2px solid var(--line);display:none;
+  }
+  .hosp-detail.open{display:block;animation:fadeUp .3s ease}
+  .hosp-detail h3{font-size:16px;color:var(--primary);margin-bottom:8px}
+  .hosp-detail .spec-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .hosp-detail .spec-tag{
+    background:#fff;border:1px solid var(--line);padding:6px 12px;
+    border-radius:20px;font-size:12px;font-weight:600;color:var(--primary);
+  }
+
+  /* ============ THEME PICKER ============ */
+  .theme-picker{
+    display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;
+  }
+  .theme-swatch{
+    width:44px;height:44px;border-radius:50%;border:3px solid transparent;
+    cursor:pointer;transition:.15s;position:relative;
+  }
+  .theme-swatch:hover{transform:scale(1.1)}
+  .theme-swatch.active{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-light)}
+  .theme-swatch[data-theme="default"]{background:linear-gradient(135deg,#0b5fa5,#1e88e5)}
+  .theme-swatch[data-theme="mint"]{background:linear-gradient(135deg,#0d7a5f,#14b8a6)}
+  .theme-swatch[data-theme="violet"]{background:linear-gradient(135deg,#6d28d9,#8b5cf6)}
+  .theme-swatch[data-theme="sunset"]{background:linear-gradient(135deg,#c2410c,#f97316)}
+  .theme-swatch[data-theme="midnight"]{background:linear-gradient(135deg,#1e3a8a,#3b82f6)}
+
+  /* ============ RESPONSIVE ============ */
+  @media(max-width:600px){
+    .content{padding:18px 14px}
+    .topbar-inner{padding:12px 16px}
+    .brand h1{font-size:15px}
+    .brand span{font-size:11px}
+    .nav-tabs{padding:0 12px}
+    .nav-tab{padding:10px 14px;font-size:13px}
+    .intro-content h1{font-size:28px}
+    .intro-content p.lead{font-size:15px}
+    .doc-card-anim{width:100px;height:130px}
+    .ai-bot{right:14px;bottom:14px}
+    .ai-panel{width:calc(100vw - 28px)}
+    .otp-input{width:42px;height:50px;font-size:18px}
+  }
+</style>
+</head>
+<body data-theme="default" data-account="patient">
+
+<!-- =====================================================
+     PAGE 1: ANIMATED INTRO
+===================================================== -->
+<div class="page active" id="page-intro">
+  <div class="intro-page">
+    <div class="bg-circles">
+      <span></span><span></span><span></span><span></span>
+    </div>
+    <div class="intro-content">
+      <h1>Your Health, Organized.</h1>
+      <p class="lead">Upload, understand, and track your medical documents — all in one intelligent place.</p>
+
+      <div class="doc-anim">
+        <div class="doc-card-anim" style="--rot:-6deg">
+          <div class="doc-icon">🧪</div>
+          <div class="doc-line blue"></div>
+          <div class="doc-line"></div>
+          <div class="doc-line short"></div>
+          <div class="doc-line"></div>
+          <div class="doc-line short"></div>
+        </div>
+        <div class="doc-card-anim" style="--rot:0deg">
+          <div class="doc-badge">✓ Verified</div>
+          <div class="scan-line"></div>
+          <div class="doc-icon">🏥</div>
+          <div class="doc-line blue"></div>
+          <div class="doc-line"></div>
+          <div class="doc-line short"></div>
+          <div class="doc-line"></div>
+          <div class="doc-line short"></div>
+        </div>
+        <div class="doc-card-anim" style="--rot:6deg">
+          <div class="doc-icon">💊</div>
+          <div class="doc-line blue"></div>
+          <div class="doc-line"></div>
+          <div class="doc-line short"></div>
+          <div class="doc-line"></div>
+          <div class="doc-line short"></div>
+        </div>
+      </div>
+
+      <div class="intro-features">
+        <div class="intro-feature"><i>📤</i> Upload Documents</div>
+        <div class="intro-feature"><i>🤖</i> AI Summaries</div>
+        <div class="intro-feature"><i>📅</i> Smart Timeline</div>
+        <div class="intro-feature"><i>🎤</i> Voice Assistant</div>
+      </div>
+
+      <button class="get-started-btn" onclick="startAuth()">
+        <i>🚀</i> Get Started
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     PAGE 2: AUTH (multi-method)
+===================================================== -->
+<div class="page" id="page-auth">
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="logo-lg">P0</div>
+      <h1 id="authTitle">Welcome Back</h1>
+      <p class="sub" id="authSub">Choose how you'd like to sign in</p>
+
+      <!-- Auth method tabs -->
+      <div class="auth-methods">
+        <button class="auth-method active" data-method="email" onclick="selectAuthMethod('email')">
+          <span class="ico">✉️</span> Email
+        </button>
+        <button class="auth-method" data-method="phone" onclick="selectAuthMethod('phone')">
+          <span class="ico">📱</span> Phone
+        </button>
+        <button class="auth-method" data-method="gmail" onclick="selectAuthMethod('gmail')">
+          <span class="ico">🔵</span> Gmail
+        </button>
+        <button class="auth-method" data-method="guest" onclick="selectAuthMethod('guest')">
+          <span class="ico">👤</span> Guest
+        </button>
+      </div>
+
+      <!-- EMAIL PANEL -->
+      <div class="auth-panel active" id="panel-email">
+        <form onsubmit="handleEmailLogin(event)">
+          <div class="form-group">
+            <label>✉️ Email Address</label>
+            <input id="emailInput" type="email" placeholder="you@example.com" required />
+          </div>
+          <button type="submit" class="auth-submit">Continue with Email →</button>
+          <div class="auth-err" id="emailErr"></div>
+        </form>
+      </div>
+
+      <!-- PHONE PANEL -->
+      <div class="auth-panel" id="panel-phone">
+        <form onsubmit="handlePhoneLogin(event)">
+          <div class="form-group">
+            <label>📱 Phone Number</label>
+            <input id="phoneInput" type="tel" placeholder="+91 98765 43210" required />
+          </div>
+          <button type="submit" class="auth-submit">Send OTP →</button>
+          <div class="auth-err" id="phoneErr"></div>
+        </form>
+      </div>
+
+      <!-- GMAIL PANEL -->
+      <div class="auth-panel" id="panel-gmail">
+        <div style="text-align:center;padding:20px 0">
+          <div style="font-size:56px;margin-bottom:16px">🔵</div>
+          <h3 style="font-size:17px;color:var(--text);margin-bottom:8px">Sign in with Gmail</h3>
+          <p style="font-size:14px;color:var(--muted);margin-bottom:24px">
+            Connect your Google account to continue securely.
+          </p>
+          <button class="auth-submit" onclick="handleGmailLogin()">
+            <span style="display:flex;align-items:center;justify-content:center;gap:10px">
+              <span style="font-size:20px">🔵</span> Continue with Google
+            </span>
+          </button>
+          <div class="auth-err" id="gmailErr" style="margin-top:14px"></div>
+        </div>
+      </div>
+
+      <!-- GUEST PANEL -->
+      <div class="auth-panel" id="panel-guest">
+        <div style="text-align:center;padding:20px 0">
+          <div style="font-size:56px;margin-bottom:16px">👤</div>
+          <h3 style="font-size:17px;color:var(--text);margin-bottom:8px">Continue as Guest</h3>
+          <p style="font-size:14px;color:var(--muted);margin-bottom:24px">
+            Try the app without creating an account. Data saved locally.
+          </p>
+          <button class="auth-submit" onclick="handleGuestLogin()">Continue as Guest →</button>
+        </div>
+      </div>
+
+      <!-- OTP PANEL (shown after phone) -->
+      <div class="auth-panel" id="panel-otp">
+        <h3 style="font-size:16px;color:var(--text);text-align:center;margin-bottom:6px">
+          Enter Verification Code
+        </h3>
+        <p style="font-size:13px;color:var(--muted);text-align:center">
+          We sent a 6-digit code to <b id="otpTarget">—</b>
+        </p>
+        <div class="otp-row">
+          <input class="otp-input" maxlength="1" inputmode="numeric" id="otp1" oninput="otpNext(1)" onkeydown="otpBack(event,1)" />
+          <input class="otp-input" maxlength="1" inputmode="numeric" id="otp2" oninput="otpNext(2)" onkeydown="otpBack(event,2)" />
+          <input class="otp-input" maxlength="1" inputmode="numeric" id="otp3" oninput="otpNext(3)" onkeydown="otpBack(event,3)" />
+          <input class="otp-input" maxlength="1" inputmode="numeric" id="otp4" oninput="otpNext(4)" onkeydown="otpBack(event,4)" />
+          <input class="otp-input" maxlength="1" inputmode="numeric" id="otp5" oninput="otpNext(5)" onkeydown="otpBack(event,5)" />
+          <input class="otp-input" maxlength="1" inputmode="numeric" id="otp6" oninput="otpNext(6)" onkeydown="otpBack(event,6)" />
+        </div>
+        <div class="demo-otp">
+          🔐 Demo OTP: <b id="demoOtp">------</b>
+        </div>
+        <button class="auth-submit" style="margin-top:14px" onclick="verifyOtp()">Verify &amp; Sign In →</button>
+        <div class="auth-err" id="otpErr" style="margin-top:10px"></div>
+        <div class="otp-note" style="margin-top:14px">
+          Didn't receive? <a onclick="resendOtp()" style="color:var(--accent);font-weight:600;cursor:pointer">Resend code</a>
+        </div>
+      </div>
+
+      <div class="switch-link" id="switchLink">
+        New here? <a onclick="switchToSignup()">Create an account</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     PAGE 3: DASHBOARD
+===================================================== -->
+<div class="page" id="page-dashboard">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand" onclick="showPage('dashboard')">
+        <div class="logo">P0</div>
+        <div>
+          <h1>Patient Zero</h1>
+          <span>Your personal health records</span>
+        </div>
+      </div>
+      <div class="user-chip">
+        <span class="dot"></span>
+        <span class="name" id="chipName">—</span>
+        <button class="logout" onclick="logout()">Sign out</button>
+      </div>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-page="dashboard" onclick="showPage('dashboard')">📊 Dashboard</button>
+      <button class="nav-tab" data-page="upload" onclick="showPage('upload')">📤 Upload</button>
+      <button class="nav-tab" data-page="timeline" onclick="showPage('timeline')">📅 Timeline</button>
+      <button class="nav-tab" data-page="insights" onclick="showPage('insights')">💡 Insights</button>
+      <button class="nav-tab" data-page="hospitals" onclick="showPage('hospitals')">🏥 Hospitals</button>
+      <button class="nav-tab" data-page="profile" onclick="showPage('profile')">👤 Profile</button>
+    </nav>
+  </header>
+
+  <div class="content" id="dashboardContent">
+    <div class="card">
+      <div class="card-body">
+        <div class="profile-header">
+          <div class="profile-avatar" id="dashAvatar">👤</div>
+          <div class="profile-info">
+            <h2 id="dashName">Welcome back</h2>
+            <p id="dashInfo">—</p>
+          </div>
+        </div>
+        <div class="stat-row" id="dashStats"></div>
+      </div>
+    </div>
+
+    <!-- AI Summary -->
+    <div class="card" id="aiSummaryCard" style="display:none">
+      <div class="card-header">
+        <h2>🤖 AI Summary of Your Records</h2>
+      </div>
+      <div class="card-body" id="aiSummaryBody"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>📁 Recent Documents</h2>
+        <button class="btn sm outline" onclick="showPage('upload')">+ Add</button>
+      </div>
+      <div class="card-body" id="dashDocs"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>📅 Recent Events</h2>
+        <button class="btn sm outline" onclick="showPage('timeline')">View all</button>
+      </div>
+      <div class="card-body" id="dashTimeline"></div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     PAGE 4: UPLOAD
+===================================================== -->
+<div class="page" id="page-upload">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand" onclick="showPage('dashboard')">
+        <div class="logo">P0</div>
+        <div>
+          <h1>Patient Zero</h1>
+          <span>Upload documents</span>
+        </div>
+      </div>
+      <div class="user-chip">
+        <span class="dot"></span>
+        <span class="name" id="chipName2">—</span>
+        <button class="logout" onclick="logout()">Sign out</button>
+      </div>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab" data-page="dashboard" onclick="showPage('dashboard')">📊 Dashboard</button>
+      <button class="nav-tab active" data-page="upload" onclick="showPage('upload')">📤 Upload</button>
+      <button class="nav-tab" data-page="timeline" onclick="showPage('timeline')">📅 Timeline</button>
+      <button class="nav-tab" data-page="insights" onclick="showPage('insights')">💡 Insights</button>
+      <button class="nav-tab" data-page="hospitals" onclick="showPage('hospitals')">🏥 Hospitals</button>
+      <button class="nav-tab" data-page="profile" onclick="showPage('profile')">👤 Profile</button>
+    </nav>
+  </header>
+
+  <div class="content">
+    <div class="card">
+      <div class="card-header">
+        <h2>📤 Upload a Medical Document</h2>
+      </div>
+      <div class="card-body">
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+          <div class="up-icon" style="font-size:42px;color:var(--accent);margin-bottom:12px">📄</div>
+          <h3 style="font-size:16px;color:var(--text);margin-bottom:6px">Click to upload or drag &amp; drop</h3>
+          <p style="font-size:13px;color:var(--muted)">PDF, JPG, PNG — lab reports, prescriptions, discharge summaries, etc.</p>
+          <input type="file" id="fileInput" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.txt" onchange="handleFileSelect(event)" />
+        </div>
+
+        <form onsubmit="saveDocument(event)" id="docForm" style="display:none;margin-top:24px">
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>📋 Document Heading (your own title) <span class="required">*</span></label>
+              <input id="docTitle" type="text" placeholder="e.g. My Blood Test — March 2024" required />
+            </div>
+            <div class="form-group">
+              <label>📅 Date <span class="required">*</span></label>
+              <input id="docDate" type="date" required />
+            </div>
+            <div class="form-group">
+              <label>📂 Type</label>
+              <select id="docType">
+                <option value="lab">Lab Report</option>
+                <option value="rx">Prescription</option>
+                <option value="summary">Discharge Summary</option>
+                <option value="referral">Referral</option>
+                <option value="visit">Visit Note</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>🏥 Hospital / Clinic</label>
+              <input id="docHospital" type="text" placeholder="e.g. City General Hospital" />
+            </div>
+            <div class="form-group">
+              <label>👨‍⚕️ Doctor / Surgeon</label>
+              <input id="docDoctor" type="text" placeholder="e.g. Dr. Smith" />
+            </div>
+            <div class="form-group full">
+              <label>📝 Notes / Findings (what does this document say?)</label>
+              <textarea id="docNotes" placeholder="Paste or type key values, findings, or notes here. The AI will read this to understand your health."></textarea>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:8px">
+            <button type="submit" class="btn primary">💾 Save &amp; Analyse</button>
+            <button type="button" class="btn outline" onclick="cancelUpload()">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>📁 Your Documents</h2>
+        <span style="font-size:13px;color:var(--muted)" id="uploadDocCount">0 documents</span>
+      </div>
+      <div class="card-body" id="uploadDocList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     PAGE 5: TIMELINE
+===================================================== -->
+<div class="page" id="page-timeline">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand" onclick="showPage('dashboard')">
+        <div class="logo">P0</div>
+        <div>
+          <h1>Patient Zero</h1>
+          <span>Your timeline</span>
+        </div>
+      </div>
+      <div class="user-chip">
+        <span class="dot"></span>
+        <span class="name" id="chipName3">—</span>
+        <button class="logout" onclick="logout()">Sign out</button>
+      </div>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab" data-page="dashboard" onclick="showPage('dashboard')">📊 Dashboard</button>
+      <button class="nav-tab" data-page="upload" onclick="showPage('upload')">📤 Upload</button>
+      <button class="nav-tab active" data-page="timeline" onclick="showPage('timeline')">📅 Timeline</button>
+      <button class="nav-tab" data-page="insights" onclick="showPage('insights')">💡 Insights</button>
+      <button class="nav-tab" data-page="hospitals" onclick="showPage('hospitals')">🏥 Hospitals</button>
+      <button class="nav-tab" data-page="profile" onclick="showPage('profile')">👤 Profile</button>
+    </nav>
+  </header>
+
+  <div class="content">
+    <div class="card">
+      <div class="card-header">
+        <h2>📅 Your Health Timeline</h2>
+        <span style="font-size:13px;color:var(--muted)" id="timelineCount">0 events</span>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="tl" id="timelineList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     PAGE 6: INSIGHTS
+===================================================== -->
+<div class="page" id="page-insights">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand" onclick="showPage('dashboard')">
+        <div class="logo">P0</div>
+        <div>
+          <h1>Patient Zero</h1>
+          <span>Health insights</span>
+        </div>
+      </div>
+      <div class="user-chip">
+        <span class="dot"></span>
+        <span class="name" id="chipName4">—</span>
+        <button class="logout" onclick="logout()">Sign out</button>
+      </div>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab" data-page="dashboard" onclick="showPage('dashboard')">📊 Dashboard</button>
+      <button class="nav-tab" data-page="upload" onclick="showPage('upload')">📤 Upload</button>
+      <button class="nav-tab" data-page="timeline" onclick="showPage('timeline')">📅 Timeline</button>
+      <button class="nav-tab active" data-page="insights" onclick="showPage('insights')">💡 Insights</button>
+      <button class="nav-tab" data-page="hospitals" onclick="showPage('hospitals')">🏥 Hospitals</button>
+      <button class="nav-tab" data-page="profile" onclick="showPage('profile')">👤 Profile</button>
+    </nav>
+  </header>
+
+  <div class="content">
+    <div class="card">
+      <div class="card-header">
+        <h2>🤖 AI Health Analysis</h2>
+        <button class="btn sm outline" onclick="regenerateAI()">🔄 Re-analyse</button>
+      </div>
+      <div class="card-body" id="insightsList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     PAGE 7: HOSPITAL SEARCH
+===================================================== -->
+<div class="page" id="page-hospitals">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand" onclick="showPage('dashboard')">
+        <div class="logo">P0</div>
+        <div>
+          <h1>Patient Zero</h1>
+          <span>Find hospitals</span>
+        </div>
+      </div>
+      <div class="user-chip">
+        <span class="dot"></span>
+        <span class="name" id="chipName5">—</span>
+        <button class="logout" onclick="logout()">Sign out</button>
+      </div>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab" data-page="dashboard" onclick="showPage('dashboard')">📊 Dashboard</button>
+      <button class="nav-tab" data-page="upload" onclick="showPage('upload')">📤 Upload</button>
+      <button class="nav-tab" data-page="timeline" onclick="showPage('timeline')">📅 Timeline</button>
+      <button class="nav-tab" data-page="insights" onclick="showPage('insights')">💡 Insights</button>
+      <button class="nav-tab active" data-page="hospitals" onclick="showPage('hospitals')">🏥 Hospitals</button>
+      <button class="nav-tab" data-page="profile" onclick="showPage('profile')">👤 Profile</button>
+    </nav>
+  </header>
+
+  <div class="content">
+    <div class="card">
+      <div class="card-header">
+        <h2>🔍 Search Hospitals</h2>
+      </div>
+      <div class="card-body">
+        <div class="hosp-search-wrap">
+          <input class="hosp-search-input" id="hospSearch" type="text"
+            placeholder="Type a hospital name, city, or speciality…"
+            autocomplete="off" oninput="searchHospitals(this.value)" onfocus="searchHospitals(this.value)" />
+          <div class="hosp-suggestions" id="hospSuggestions"></div>
+        </div>
+        <div class="hosp-detail" id="hospDetail"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>🏥 All Available Hospitals</h2>
+      </div>
+      <div class="card-body" id="allHospitals"></div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     PAGE 8: PROFILE
+===================================================== -->
+<div class="page" id="page-profile">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand" onclick="showPage('dashboard')">
+        <div class="logo">P0</div>
+        <div>
+          <h1>Patient Zero</h1>
+          <span>Your profile</span>
+        </div>
+      </div>
+      <div class="user-chip">
+        <span class="dot"></span>
+        <span class="name" id="chipName6">—</span>
+        <button class="logout" onclick="logout()">Sign out</button>
+      </div>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab" data-page="dashboard" onclick="showPage('dashboard')">📊 Dashboard</button>
+      <button class="nav-tab" data-page="upload" onclick="showPage('upload')">📤 Upload</button>
+      <button class="nav-tab" data-page="timeline" onclick="showPage('timeline')">📅 Timeline</button>
+      <button class="nav-tab" data-page="insights" onclick="showPage('insights')">💡 Insights</button>
+      <button class="nav-tab" data-page="hospitals" onclick="showPage('hospitals')">🏥 Hospitals</button>
+      <button class="nav-tab active" data-page="profile" onclick="showPage('profile')">👤 Profile</button>
+    </nav>
+  </header>
+
+  <div class="content">
+    <div class="card">
+      <div class="card-header">
+        <h2>👤 Your Profile</h2>
+        <button class="btn sm outline" onclick="enableProfileEdit()">✏️ Edit</button>
+      </div>
+      <div class="card-body">
+        <div class="profile-header">
+          <div class="profile-avatar" id="profileAvatar">👤</div>
+          <div class="profile-info">
+            <h2 id="profileName">—</h2>
+            <p id="profileSub">—</p>
+          </div>
+        </div>
+        <div class="stat-row" id="profileStats"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>📋 Account Details</h2>
+      </div>
+      <div class="card-body">
+        <div class="kv-grid">
+          <div class="kv"><b>Username</b><span class="val" id="pUsername">—</span></div>
+          <div class="kv"><b>Full Name</b><span class="val" id="pName">—</span></div>
+          <div class="kv"><b>Age</b><span class="val" id="pAge">—</span></div>
+          <div class="kv"><b>Sex</b><span class="val" id="pSex">—</span></div>
+          <div class="kv"><b>Hospital</b><span class="val" id="pHospital">—</span></div>
+          <div class="kv"><b>Doctor / Surgeon</b><span class="val" id="pDoctor">—</span></div>
+          <div class="kv"><b>Account Type</b><span class="val" id="pAccountType">—</span></div>
+          <div class="kv"><b>Sign-in Method</b><span class="val" id="pSignMethod">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme customization -->
+    <div class="card">
+      <div class="card-header">
+        <h2>🎨 Theme &amp; Appearance</h2>
+      </div>
+      <div class="card-body">
+        <p style="font-size:14px;color:var(--muted);margin-bottom:14px">
+          Choose a colour theme that feels right for you. Your choice is saved to your account.
+        </p>
+        <div class="theme-picker">
+          <div class="theme-swatch active" data-theme="default" onclick="setTheme('default')" title="Ocean Blue"></div>
+          <div class="theme-swatch" data-theme="mint" onclick="setTheme('mint')" title="Mint Green"></div>
+          <div class="theme-swatch" data-theme="violet" onclick="setTheme('violet')" title="Violet"></div>
+          <div class="theme-swatch" data-theme="sunset" onclick="setTheme('sunset')" title="Sunset Orange"></div>
+          <div class="theme-swatch" data-theme="midnight" onclick="setTheme('midnight')" title="Midnight Blue"></div>
+        </div>
+        <div style="margin-top:16px">
+          <label style="font-size:13px;font-weight:600;color:var(--text);display:block;margin-bottom:6px">Account Type</label>
+          <select id="accountTypeSelect" onchange="setAccountType(this.value)" style="padding:10px 14px;border-radius:10px;border:2px solid var(--line);font-family:inherit;font-size:14px">
+            <option value="patient">Patient</option>
+            <option value="doctor">Doctor / Caregiver</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="profileEditCard" style="display:none">
+      <div class="card-header">
+        <h2>✏️ Edit Profile</h2>
+      </div>
+      <div class="card-body">
+        <form onsubmit="saveProfile(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>📛 Full Name</label>
+              <input id="editName" type="text" />
+            </div>
+            <div class="form-group">
+              <label>🎂 Age</label>
+              <input id="editAge" type="number" min="1" max="120" />
+            </div>
+            <div class="form-group">
+              <label>⚧ Sex</label>
+              <select id="editSex">
+                <option value="">Select</option>
+                <option value="F">Female</option>
+                <option value="M">Male</option>
+                <option value="O">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>🏥 Hospital Name</label>
+              <input id="editHospital" type="text" />
+            </div>
+            <div class="form-group full">
+              <label>👨‍⚕️ Doctor / Surgeon Name</label>
+              <input id="editDoctor" type="text" />
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:8px">
+            <button type="submit" class="btn primary">💾 Save Changes</button>
+            <button type="button" class="btn outline" onclick="disableProfileEdit()">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     AI BOT (floating, available on all app pages)
+===================================================== -->
+<div class="ai-bot" id="aiBot" style="display:none">
+  <div class="ai-panel" id="aiPanel">
+    <div class="ai-head">
+      <div class="ai-avatar">🤖</div>
+      <h3>Health AI <small>Voice &amp; text · understands your data</small></h3>
+      <button class="ai-close" onclick="toggleAiPanel()">✕</button>
+    </div>
+    <div class="ai-body" id="aiBody">
+      <div class="ai-msg bot">
+        <b>👋 Hi! I'm your health AI.</b><br>
+        I've read your documents and I'm here to help you understand them.
+        Ask me anything — I can summarise, explain, and suggest what to look out for.
+        <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;font-size:13px">
+          <span>• "Summarise my records"</span>
+          <span>• "What am I suffering from?"</span>
+          <span>• "What should I take care of?"</span>
+          <span>• "Any missing information?"</span>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--muted)">
+          🎤 Press the mic and speak, or type below.
+        </div>
+      </div>
+    </div>
+    <div class="ai-actions">
+      <button onclick="askAi('Summarise my records')">📋 Summarise</button>
+      <button onclick="askAi('What am I suffering from?')">🩺 My condition</button>
+      <button onclick="askAi('What should I take care of?')">💚 Care tips</button>
+      <button onclick="askAi('Any missing information?')">⚠️ Missing</button>
+    </div>
+    <div class="ai-foot">
+      <input id="aiInput" type="text" placeholder="Ask me anything…" onkeydown="if(event.key==='Enter')askAi(this.value)" />
+      <button class="mic-btn" id="micBtn" onclick="toggleListening()" title="Voice input">🎤</button>
+      <button class="send-btn" onclick="askAi(document.getElementById('aiInput').value)" title="Send">➤</button>
+    </div>
+  </div>
+  <button class="ai-fab" id="aiFab" onclick="toggleAiPanel()" title="Open AI assistant">
+    🤖
+    <span class="notif-dot" id="aiNotif"></span>
+  </button>
+</div>
+
+<!-- =====================================================
+     MODAL
+===================================================== -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="head">
+      <div>
+        <div class="title" id="modalTitle">Document</div>
+        <div class="meta" id="modalMeta"></div>
+      </div>
+      <button class="close" onclick="closeModal()">×</button>
+    </div>
+    <div class="body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================================================================
+   STORAGE
+================================================================ */
+const DB_KEY = "patientzero_db_v2";
+const SESSION_KEY = "patientzero_session_v2";
+
+function loadDB(){
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    return raw ? JSON.parse(raw) : { users: {} };
+  } catch(e){ return { users: {} }; }
+}
+function saveDB(db){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+function getSession(){ return localStorage.getItem(SESSION_KEY); }
+function setSession(u){ localStorage.setItem(SESSION_KEY, u); }
+function clearSession(){ localStorage.removeItem(SESSION_KEY); }
+
+/* ================================================================
+   HOSPITAL DATABASE
+================================================================ */
+const HOSPITALS = [
+  { name:"City General Hospital", city:"Mumbai", icon:"🏥", specialities:["Cardiology","Endocrinology","Orthopaedics","Neurology","Oncology","Emergency Care"] },
+  { name:"Apollo Hospitals", city:"Delhi", icon:"🏥", specialities:["Cardiology","Cardiothoracic Surgery","Oncology","Transplant","Neurology","Nephrology"] },
+  { name:"Fortis Healthcare", city:"Bangalore", icon:"🏥", specialities:["Orthopaedics","Cardiology","Gastroenterology","Pulmonology","Dermatology"] },
+  { name:"Max Super Speciality", city:"Delhi", icon:"🏥", specialities:["Oncology","Cardiology","Neurosciences","Orthopaedics","Paediatrics"] },
+  { name:"Manipal Hospital", city:"Bangalore", icon:"🏥", specialities:["Cardiology","Endocrinology","Orthopaedics","Urology","Oncology"] },
+  { name:"AIIMS", city:"New Delhi", icon:"🏛️", specialities:["All Specialities","Trauma","Cardiology","Neurology","Oncology","Paediatrics"] },
+  { name:"Cleveland Clinic", city:"Abu Dhabi", icon:"🏥", specialities:["Cardiology","Cardiothoracic Surgery","Neurology","Oncology","Transplant"] },
+  { name:"Mayo Clinic", city:"Rochester", icon:"🏥", specialities:["Cardiology","Endocrinology","Neurology","Oncology","Transplant","Orthopaedics"] },
+  { name:"Johns Hopkins Hospital", city:"Baltimore", icon:"🏥", specialities:["Neurology","Neurosurgery","Cardiology","Oncology","Paediatrics","Transplant"] },
+  { name:"Singapore General Hospital", city:"Singapore", icon:"🏥", specialities:["Cardiology","Oncology","Orthopaedics","Gastroenterology","Neurology"] },
+  { name:"Narayana Health", city:"Bangalore", icon:"🏥", specialities:["Cardiac Surgery","Cardiology","Nephrology","Oncology","Transplant"] },
+  { name:"Kokilaben Dhirubhai Ambani Hospital", city:"Mumbai", icon:"🏥", specialities:["Cardiology","Oncology","Neurosciences","Orthopaedics","Transplant"] },
+];
+
+/* ================================================================
+   STATE
+================================================================ */
+let db = loadDB();
+let currentUser = null;
+let currentPatient = null;
+let pendingFile = null;
+let pendingOtp = null;
+let pendingPhone = null;
+let pendingEmail = null;
+let listening = false;
+let recognition = null;
+let aiOpen = false;
+let currentTheme = "default";
+let currentAccountType = "patient";
+
+/* ================================================================
+   INTRO → AUTH
+================================================================ */
+function startAuth(){
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.getElementById("page-auth").classList.add("active");
+}
+
+/* ================================================================
+   AUTH METHODS
+================================================================ */
+function selectAuthMethod(method){
+  document.querySelectorAll(".auth-method").forEach(m => {
+    m.classList.toggle("active", m.dataset.method === method);
+  });
+  document.querySelectorAll(".auth-panel").forEach(p => p.classList.remove("active"));
+  const panel = document.getElementById("panel-" + method);
+  if (panel) panel.classList.add("active");
+  if (method === "otp") {
+    document.getElementById("panel-otp").classList.add("active");
+  }
+}
+
+function switchToSignup(){
+  toast("ℹ️ Guest / OTP accounts auto-create on first sign-in. Just continue!");
+}
+
+/* ================================================================
+   EMAIL LOGIN
+================================================================ */
+function handleEmailLogin(e){
+  e.preventDefault();
+  const email = document.getElementById("emailInput").value.trim().toLowerCase();
+  const err = document.getElementById("emailErr");
+  if (!email || !email.includes("@")){ err.textContent = "Please enter a valid email."; return; }
+  err.textContent = "";
+  // Treat email as username; auto-create if new
+  const username = "email_" + email.replace(/[^a-z0-9]/g,"_");
+  signInOrCreate(username, email, "email", email);
+}
+
+/* ================================================================
+   PHONE LOGIN + OTP
+================================================================ */
+function handlePhoneLogin(e){
+  e.preventDefault();
+  const phone = document.getElementById("phoneInput").value.trim();
+  const err = document.getElementById("phoneErr");
+  if (phone.replace(/\D/g,"").length < 8){ err.textContent = "Please enter a valid phone number."; return; }
+  err.textContent = "";
+  pendingPhone = phone;
+  pendingOtp = String(Math.floor(100000 + Math.random() * 900000));
+  document.getElementById("otpTarget").textContent = phone;
+  document.getElementById("demoOtp").textContent = pendingOtp;
+  // clear OTP inputs
+  for (let i = 1; i <= 6; i++) document.getElementById("otp"+i).value = "";
+  selectAuthMethod("otp");
+  document.getElementById("otp1").focus();
+  toast("📱 OTP sent! Check the demo code below.");
+}
+function resendOtp(){
+  if (!pendingPhone) return;
+  pendingOtp = String(Math.floor(100000 + Math.random() * 900000));
+  document.getElementById("demoOtp").textContent = pendingOtp;
+  for (let i = 1; i <= 6; i++) document.getElementById("otp"+i).value = "";
+  document.getElementById("otp1").focus();
+  toast("🔄 New OTP generated");
+}
+function otpNext(n){
+  const el = document.getElementById("otp"+n);
+  if (el.value && n < 6) document.getElementById("otp"+(n+1)).focus();
+  if (n === 6) setTimeout(verifyOtp, 200);
+}
+function otpBack(e, n){
+  if (e.key === "Backspace" && !e.target.value && n > 1){
+    document.getElementById("otp"+(n-1)).focus();
+  }
+}
+function verifyOtp(){
+  const entered = [1,2,3,4,5,6].map(i => document.getElementById("otp"+i).value).join("");
+  const err = document.getElementById("otpErr");
+  if (entered.length !== 6){ err.textContent = "Please enter all 6 digits."; return; }
+  if (entered !== pendingOtp){ err.textContent = "Incorrect OTP. Please try again."; return; }
+  err.textContent = "";
+  const username = "phone_" + pendingPhone.replace(/\D/g,"");
+  signInOrCreate(username, pendingPhone, "phone", pendingPhone);
+}
+
+/* ================================================================
+   GMAIL LOGIN
+================================================================ */
+function handleGmailLogin(){
+  const email = "user" + Math.floor(Math.random()*1000) + "@gmail.com";
+  const username = "gmail_" + email.replace(/[^a-z0-9]/g,"_");
+  signInOrCreate(username, email, "gmail", email);
+}
+
+/* ================================================================
+   GUEST LOGIN
+================================================================ */
+function handleGuestLogin(){
+  const username = "guest_" + Date.now();
+  signInOrCreate(username, "Guest User", "guest", "");
+}
+
+/* ================================================================
+   SIGN IN OR CREATE
+================================================================ */
+function signInOrCreate(username, displayName, method, contact){
+  if (!db.users[username]){
+    db.users[username] = {
+      password: "",  // no password for these methods
+      name: displayName,
+      age: "",
+      sex: "",
+      hospital: "",
+      doctor: "",
+      accountType: "patient",
+      theme: "default",
+      signMethod: method,
+      contact: contact,
+      documents: [],
+      events: [],
+      insights: [],
+      createdAt: new Date().toISOString()
+    };
+    saveDB(db);
+    toast("✨ New account created!");
+  }
+  setSession(username);
+  currentUser = username;
+  currentPatient = db.users[username];
+  // Apply saved theme
+  currentTheme = currentPatient.theme || "default";
+  currentAccountType = currentPatient.accountType || "patient";
+  applyTheme(currentTheme);
+  document.body.dataset.account = currentAccountType;
+  enterApp();
+}
+
+/* ================================================================
+   ENTER APP
+================================================================ */
+function enterApp(){
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  showPage("dashboard");
+  document.getElementById("aiBot").style.display = "flex";
+  updateChipName();
+  refreshDashboard();
+  toast(`✅ Welcome, ${currentPatient.name}`);
+}
+
+function logout(){
+  clearSession();
+  currentUser = null;
+  currentPatient = null;
+  closeModal();
+  document.getElementById("aiBot").style.display = "none";
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.getElementById("page-intro").classList.add("active");
+  document.body.dataset.theme = "default";
+  document.body.dataset.account = "patient";
+  toast("👋 Signed out");
+}
+
+function updateChipName(){
+  const n = currentPatient.name || currentUser;
+  ["chipName","chipName2","chipName3","chipName4","chipName5","chipName6"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = n;
+  });
+}
+
+/* ================================================================
+   PAGE ROUTING
+================================================================ */
+function showPage(page){
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.getElementById("page-" + page).classList.add("active");
+  document.querySelectorAll(".nav-tab").forEach(t => {
+    t.classList.toggle("active", t.dataset.page === page);
+  });
+  if (page === "dashboard") refreshDashboard();
+  if (page === "upload") refreshUploadPage();
+  if (page === "timeline") refreshTimelinePage();
+  if (page === "insights") refreshInsightsPage();
+  if (page === "hospitals") refreshHospitalsPage();
+  if (page === "profile") refreshProfilePage();
+}
+
+/* ================================================================
+   DASHBOARD
+================================================================ */
+function refreshDashboard(){
+  if (!currentPatient) return;
+  const p = currentPatient;
+  document.getElementById("dashName").textContent = p.name || currentUser;
+  document.getElementById("dashInfo").textContent =
+    [p.age ? p.age + " yrs" : "", p.sex === "F" ? "Female" : p.sex === "M" ? "Male" : p.sex === "O" ? "Other" : "",
+     p.hospital || "", p.doctor || ""].filter(Boolean).join(" · ") || "Complete your profile to personalise your experience";
+
+  const initials = (p.name || currentUser).split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+  document.getElementById("dashAvatar").textContent = initials || "👤";
+
+  const docs = p.documents || [];
+  const events = p.events || [];
+  document.getElementById("dashStats").innerHTML = `
+    <div class="stat-box"><div class="num">${docs.length}</div><div class="lbl">Documents</div></div>
+    <div class="stat-box"><div class="num">${events.length}</div><div class="lbl">Events</div></div>
+    <div class="stat-box"><div class="num">${(p.insights||[]).length}</div><div class="lbl">Insights</div></div>
+    <div class="stat-box"><div class="num">${p.hospital ? "1" : "0"}</div><div class="lbl">Hospital</div></div>
+  `;
+
+  // AI Summary
+  const summaryCard = document.getElementById("aiSummaryCard");
+  const summaryBody = document.getElementById("aiSummaryBody");
+  if (docs.length > 0){
+    summaryCard.style.display = "block";
+    summaryBody.innerHTML = generateOverallSummary(p);
+  } else {
+    summaryCard.style.display = "none";
+  }
+
+  // Recent docs
+  const dashDocs = document.getElementById("dashDocs");
+  if (docs.length === 0){
+    dashDocs.innerHTML = `<div class="empty"><div class="icon">📁</div><h3>No documents yet</h3><p>Upload your first medical document to get started.</p><button class="btn primary" onclick="showPage('upload')">+ Upload Document</button></div>`;
+  } else {
+    dashDocs.innerHTML = docs.slice(-5).reverse().map(d => docItemHTML(d)).join("");
+  }
+
+  // Recent events
+  const dashTL = document.getElementById("dashTimeline");
+  if (events.length === 0){
+    dashTL.innerHTML = `<div class="empty"><div class="icon">📅</div><h3>No events yet</h3><p>Your timeline will appear here as you add documents.</p></div>`;
+  } else {
+    dashTL.innerHTML = events.slice(-5).reverse().map(e => eventHTML(e)).join("");
+  }
+}
+
+function docItemHTML(d){
+  const icon = getDocIcon(d.type);
+  return `
+    <div class="doc-item">
+      <div class="thumb">${icon}</div>
+      <div class="meta">
+        <b>${escapeHtml(d.title)}</b>
+        <small>📅 ${d.date} ${d.hospital ? "· 🏥 " + escapeHtml(d.hospital) : ""} ${d.doctor ? "· 👨‍⚕️ " + escapeHtml(d.doctor) : ""}</small>
+      </div>
+      <div class="actions">
+        <button onclick="openDoc('${d.id}')">View</button>
+        <button onclick="deleteDoc('${d.id}')" style="background:var(--bad-bg);color:var(--bad)">Delete</button>
+      </div>
+    </div>`;
+}
+
+function eventHTML(e){
+  const pill = e.trend === "up" ? `<span style="font-size:11px;padding:4px 10px;border-radius:20px;font-weight:700;color:var(--bad);background:var(--bad-bg);border:1px solid var(--line)">↑ Increased</span>`
+              : e.kind === "flag" ? `<span style="font-size:11px;padding:4px 10px;border-radius:20px;font-weight:700;color:var(--warn);background:var(--warn-bg);border:1px solid var(--line)">⚠ Flag</span>` : "";
+  return `
+    <div class="event ${e.kind}">
+      <div class="card" onclick="openDoc('${e.docId}')">
+        <div class="row"><div class="title">${escapeHtml(e.title)}</div>${pill}</div>
+        <div class="sub">${escapeHtml(e.sub || "")}</div>
+        <div class="row" style="margin-top:8px">
+          <span class="date">📅 ${e.date}</span>
+          <span style="font-size:12px;color:var(--accent);cursor:pointer;font-weight:600">👆 View source</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function getDocIcon(type){
+  return type === "lab" ? "🧪" : type === "rx" ? "💊" : type === "summary" ? "🏥"
+       : type === "referral" ? "📄" : type === "visit" ? "🩺" : "📄";
+}
+
+/* ================================================================
+   AI SUMMARY GENERATOR
+================================================================ */
+function generateOverallSummary(p){
+  const docs = p.documents || [];
+  if (docs.length === 0) return "<p>No documents yet. Upload some to see a summary.</p>";
+
+  const labDocs = docs.filter(d => d.type === "lab");
+  const rxDocs = docs.filter(d => d.type === "rx");
+  const summaryDocs = docs.filter(d => d.type === "summary");
+  const hospitals = [...new Set(docs.map(d => d.hospital).filter(Boolean))];
+  const doctors = [...new Set(docs.map(d => d.doctor).filter(Boolean))];
+
+  let html = `<div style="font-size:14px;line-height:1.8">`;
+  html += `<p style="margin-bottom:12px"><b>📋 Overview:</b> You have <b>${docs.length} document${docs.length!==1?"s":""}</b> in your records`;
+  if (hospitals.length) html += `, from <b>${hospitals.join(", ")}</b>`;
+  if (doctors.length) html += `, under the care of <b>${doctors.join(", ")}</b>`;
+  html += `.</p>`;
+
+  if (labDocs.length > 0){
+    html += `<p style="margin-bottom:12px"><b>🧪 Lab tests:</b> ${labDocs.length} report${labDocs.length!==1?"s":""} on record. `;
+    const notes = labDocs.map(d => d.notes).filter(Boolean);
+    if (notes.length) html += `Key notes: ${notes.slice(0,2).map(n => escapeHtml(n.slice(0,120))).join("; ")}.`;
+    html += `</p>`;
+  }
+  if (rxDocs.length > 0){
+    html += `<p style="margin-bottom:12px"><b>💊 Medications:</b> ${rxDocs.length} prescription${rxDocs.length!==1?"s":""} on record. `;
+    const meds = rxDocs.map(d => d.title).join(", ");
+    html += `Medicines: ${escapeHtml(meds)}.</p>`;
+  }
+  if (summaryDocs.length > 0){
+    html += `<p style="margin-bottom:12px"><b>🏥 Hospital summaries:</b> ${summaryDocs.length} discharge / summary document${summaryDocs.length!==1?"s":""}.</p>`;
+  }
+
+  html += `<p style="margin-bottom:12px"><b>💡 What this means:</b> Your records show a history of medical care across ${docs.length} document${docs.length!==1?"s":""}. `;
+  html += `The AI has analysed the content and generated specific insights on the <b>Insights</b> page. `;
+  html += `Please review them and discuss with your doctor.</p>`;
+
+  html += `<div style="margin-top:16px;padding:14px;background:var(--warn-bg);border-radius:12px;border:1px solid var(--line);font-size:13px;color:var(--warn)">`;
+  html += `⚠️ <b>Important:</b> This is an informational summary, not a medical diagnosis. Always consult a qualified healthcare professional.`;
+  html += `</div></div>`;
+
+  return html;
+}
+
+/* ================================================================
+   UPLOAD PAGE
+================================================================ */
+function handleFileSelect(e){
+  const file = e.target.files[0];
+  if (!file) return;
+  pendingFile = file;
+  const nameNoExt = file.name.replace(/\.[^/.]+$/, "");
+  document.getElementById("docTitle").value = nameNoExt;
+  document.getElementById("docDate").value = new Date().toISOString().slice(0,10);
+  document.getElementById("docHospital").value = currentPatient.hospital || "";
+  document.getElementById("docDoctor").value = currentPatient.doctor || "";
+  document.getElementById("docForm").style.display = "block";
+  document.getElementById("uploadZone").style.display = "none";
+  toast(`📄 Selected: ${file.name}`);
+}
+
+function cancelUpload(){
+  pendingFile = null;
+  document.getElementById("docForm").style.display = "none";
+  document.getElementById("uploadZone").style.display = "block";
+  document.getElementById("fileInput").value = "";
+  document.getElementById("docForm").reset();
+}
+
+function saveDocument(e){
+  e.preventDefault();
+  const title = document.getElementById("docTitle").value.trim();
+  const date = document.getElementById("docDate").value;
+  const type = document.getElementById("docType").value;
+  const hospital = document.getElementById("docHospital").value.trim();
+  const doctor = document.getElementById("docDoctor").value.trim();
+  const notes = document.getElementById("docNotes").value.trim();
+
+  if (!title || !date){ toast("⚠️ Title and date are required"); return; }
+
+  const docId = "doc_" + Date.now() + "_" + Math.random().toString(36).slice(2,7);
+  const doc = {
+    id: docId, title, date, type,
+    hospital: hospital || currentPatient.hospital || "",
+    doctor: doctor || currentPatient.doctor || "",
+    notes: notes || "",
+    fileName: pendingFile ? pendingFile.name : "",
+    fileSize: pendingFile ? pendingFile.size : 0,
+    fileType: pendingFile ? pendingFile.type : "",
+    uploadedAt: new Date().toISOString()
+  };
+
+  if (pendingFile && pendingFile.size < 2 * 1024 * 1024){
+    const reader = new FileReader();
+    reader.onload = function(ev){ doc.fileData = ev.target.result; finishSaveDoc(doc); };
+    reader.onerror = function(){ finishSaveDoc(doc); };
+    reader.readAsDataURL(pendingFile);
+  } else {
+    finishSaveDoc(doc);
+  }
+}
+
+function finishSaveDoc(doc){
+  if (!currentPatient.documents) currentPatient.documents = [];
+  if (!currentPatient.events) currentPatient.events = [];
+
+  currentPatient.documents.push(doc);
+
+  const eventKind = doc.type === "rx" ? "med" : doc.type === "lab" ? "lab" : "visit";
+  const event = {
+    id: "ev_" + Date.now(),
+    date: doc.date,
+    kind: eventKind,
+    title: doc.title,
+    sub: [
+      doc.hospital ? "🏥 " + doc.hospital : "",
+      doc.doctor ? "👨‍⚕️ " + doc.doctor : "",
+      doc.notes ? "📝 " + doc.notes.slice(0,80) : ""
+    ].filter(Boolean).join(" · ") || "Document uploaded",
+    docId: doc.id
+  };
+  currentPatient.events.push(event);
+  currentPatient.events.sort((a,b) => a.date.localeCompare(b.date));
+
+  currentPatient.insights = generateInsights(currentPatient);
+
+  db.users[currentUser] = currentPatient;
+  saveDB(db);
+
+  toast("✅ Document saved! AI is analysing…");
+  cancelUpload();
+  refreshUploadPage();
+  refreshDashboard();
+
+  // AI auto-summary after upload
+  setTimeout(() => {
+    if (currentPatient.documents.length === 1){
+      toggleAiPanel(true);
+      addAiMessage(`📄 I've analysed your first document: <b>${escapeHtml(doc.title)}</b>.<br><br>Here's my summary:<br>${generateDocSummary(doc)}<br><br>Ask me anything else — like "What am I suffering from?" or "What should I take care of?"`, false);
+    } else {
+      addAiMessage(`📄 New document added: <b>${escapeHtml(doc.title)}</b> (${doc.date}).<br>I've updated your timeline and insights. Ask me for a summary anytime!`, false);
+    }
+  }, 600);
+}
+
+function generateDocSummary(doc){
+  const parts = [];
+  if (doc.type === "lab") parts.push("This looks like a lab test report.");
+  if (doc.type === "rx") parts.push("This is a prescription.");
+  if (doc.type === "summary") parts.push("This is a hospital discharge summary.");
+  if (doc.hospital) parts.push(`Hospital: <b>${escapeHtml(doc.hospital)}</b>.`);
+  if (doc.doctor) parts.push(`Doctor: <b>${escapeHtml(doc.doctor)}</b>.`);
+  if (doc.notes) parts.push(`Key notes: "${escapeHtml(doc.notes.slice(0,200))}".`);
+  parts.push(`Date: <b>${doc.date}</b>.`);
+  return parts.join(" ");
+}
+
+function refreshUploadPage(){
+  if (!currentPatient) return;
+  const docs = currentPatient.documents || [];
+  document.getElementById("uploadDocCount").textContent = docs.length + " document" + (docs.length !== 1 ? "s" : "");
+  const list = document.getElementById("uploadDocList");
+  if (docs.length === 0){
+    list.innerHTML = `<div class="empty"><div class="icon">📁</div><h3>No documents yet</h3><p>Upload your first document above.</p></div>`;
+  } else {
+    list.innerHTML = docs.slice().reverse().map(d => docItemHTML(d)).join("");
+  }
+  document.getElementById("uploadZone").style.display = "block";
+  document.getElementById("docForm").style.display = "none";
+  document.getElementById("fileInput").value = "";
+  pendingFile = null;
+}
+
+function deleteDoc(docId){
+  if (!confirm("Delete this document and its timeline event?")) return;
+  currentPatient.documents = (currentPatient.documents || []).filter(d => d.id !== docId);
+  currentPatient.events = (currentPatient.events || []).filter(e => e.docId !== docId);
+  currentPatient.insights = generateInsights(currentPatient);
+  db.users[currentUser] = currentPatient;
+  saveDB(db);
+  toast("🗑️ Document deleted");
+  refreshUploadPage();
+  refreshDashboard();
+  refreshTimelinePage();
+  refreshInsightsPage();
+}
+
+/* ================================================================
+   TIMELINE
+================================================================ */
+function refreshTimelinePage(){
+  if (!currentPatient) return;
+  const events = currentPatient.events || [];
+  document.getElementById("timelineCount").textContent = events.length + " event" + (events.length !== 1 ? "s" : "");
+  const list = document.getElementById("timelineList");
+  if (events.length === 0){
+    list.innerHTML = `<div class="empty"><div class="icon">📅</div><h3>No events yet</h3><p>Upload documents to build your timeline.</p><button class="btn primary" onclick="showPage('upload')">+ Upload Document</button></div>`;
+  } else {
+    list.innerHTML = events.map(e => eventHTML(e)).join("");
+  }
+}
+
+/* ================================================================
+   INSIGHTS (AI Analysis)
+================================================================ */
+function refreshInsightsPage(){
+  if (!currentPatient) return;
+  if (!currentPatient.insights || currentPatient.insights.length === 0){
+    currentPatient.insights = generateInsights(currentPatient);
+    db.users[currentUser] = currentPatient;
+    saveDB(db);
+  }
+  const insights = currentPatient.insights || [];
+  const list = document.getElementById("insightsList");
+  if (insights.length === 0){
+    list.innerHTML = `<div class="empty"><div class="icon">💡</div><h3>No insights yet</h3><p>Add documents to see AI-generated health analysis.</p><button class="btn primary" onclick="showPage('upload')">+ Upload Document</button></div>`;
+  } else {
+    list.innerHTML = insights.map(i => `
+      <div class="insight ${i.type}">
+        <div class="tag">${escapeHtml(i.tag)}</div>
+        <div class="txt">${i.text}</div>
+      </div>`).join("");
+  }
+}
+
+function regenerateAI(){
+  if (!currentPatient) return;
+  currentPatient.insights = generateInsights(currentPatient);
+  db.users[currentUser] = currentPatient;
+  saveDB(db);
+  refreshInsightsPage();
+  refreshDashboard();
+  toast("🔄 AI re-analysed your records");
+}
+
+/* ================================================================
+   AI ANALYSIS ENGINE
+================================================================ */
+function generateInsights(p){
+  const insights = [];
+  const docs = p.documents || [];
+  const events = p.events || [];
+
+  if (docs.length === 0) return insights;
+
+  const labDocs = docs.filter(d => d.type === "lab").sort((a,b) => a.date.localeCompare(b.date));
+  const rxDocs = docs.filter(d => d.type === "rx").sort((a,b) => a.date.localeCompare(b.date));
+  const summaryDocs = docs.filter(d => d.type === "summary");
+
+  // 1. What you might be suffering from (condition inference)
+  const allText = docs.map(d => (d.title + " " + (d.notes||"")).toLowerCase()).join(" ");
+  const conditions = [];
+  if (allText.includes("diabet") || allText.includes("hba1c") || allText.includes("glucose") || allText.includes("metformin"))
+    conditions.push("Diabetes / blood sugar concerns");
+  if (allText.includes("cholesterol") || allText.includes("ldl") || allText.includes("statin") || allText.includes("lipid"))
+    conditions.push("High cholesterol / cardiovascular risk");
+  if (allText.includes("heart") || allText.includes("ecg") || allText.includes("cardiac") || allText.includes("angio"))
+    conditions.push("Heart / cardiac condition");
+  if (allText.includes("surgery") || allText.includes("operative") || allText.includes("post-op"))
+    conditions.push("Post-surgical recovery");
+  if (allText.includes("hemoglobin") || allText.includes("anaemia") || allText.includes("anemia"))
+    conditions.push("Possible anaemia / low hemoglobin");
+  if (allText.includes("thyroid") || allText.includes("tsh"))
+    conditions.push("Thyroid concerns");
+  if (allText.includes("kidney") || allText.includes("creatinine") || allText.includes("egfr"))
+    conditions.push("Kidney function monitoring");
+  if (allText.includes("liver") || allText.includes("sgot") || allText.includes("sgpt"))
+    conditions.push("Liver function monitoring");
+
+  if (conditions.length > 0){
+    insights.push({
+      type: "diagnosis",
+      tag: "🩺 AI Health Observation",
+      text: `Based on your documents, the AI observes patterns related to: <b>${conditions.join(" · ")}</b>.<br><br>
+        <b>What you should take care of:</b><br>
+        • Keep all follow-up appointments and lab tests on schedule.<br>
+        • Track your medication adherence daily.<br>
+        • Note any new symptoms (chest pain, fatigue, dizziness) and report them promptly.<br>
+        • Maintain a healthy diet and gentle activity as advised by your doctor.<br>
+        • Bring all your documents to every consultation for a complete picture.<br><br>
+        <i>This is an informational observation — not a medical diagnosis. Please discuss with a qualified professional.</i>`,
+      sources: docs.map(d => d.id)
+    });
+  }
+
+  // 2. Change over time
+  if (labDocs.length >= 2){
+    const first = labDocs[0], last = labDocs[labDocs.length-1];
+    insights.push({
+      type: "change",
+      tag: "Change over time",
+      text: `You have <b>${labDocs.length} lab reports</b> from <b>${first.date}</b> to <b>${last.date}</b>. The AI compares values across time to spot trends — review them with your doctor.`,
+      sources: labDocs.map(d => d.id)
+    });
+  }
+
+  // 3. Medication history
+  if (rxDocs.length >= 1){
+    const meds = rxDocs.map(d => `<b>${escapeHtml(d.title)}</b> (${d.date})`).join(", ");
+    insights.push({
+      type: "change",
+      tag: "Medication history",
+      text: `Prescriptions on record: ${meds}. The AI tracks dose changes and new additions over time.`,
+      sources: rxDocs.map(d => d.id)
+    });
+  }
+
+  // 4. Timeline gaps
+  if (events.length >= 2){
+    const dates = events.map(e => new Date(e.date).getTime()).sort((a,b) => a-b);
+    let maxGap = 0, gapStart = null, gapEnd = null;
+    for (let i = 1; i < dates.length; i++){
+      const gap = dates[i] - dates[i-1];
+      if (gap > maxGap){ maxGap = gap; gapStart = new Date(dates[i-1]); gapEnd = new Date(dates[i]); }
+    }
+    const days = Math.round(maxGap / (1000*60*60*24));
+    if (days > 90){
+      insights.push({
+        type: "gap",
+        tag: "⚠️ Timeline gap — possible missing records",
+        text: `The AI found a gap of <b>${days} days</b> between events (from <b>${gapStart.toISOString().slice(0,10)}</b> to <b>${gapEnd.toISOString().slice(0,10)}</b>). If you had tests or visits during this time, consider uploading those documents for a complete picture.`,
+        sources: []
+      });
+    }
+  }
+
+  // 5. Missing information
+  const missingFlags = [];
+  if (labDocs.length > 0 && !allText.includes("hba1c") && allText.includes("diabet"))
+    missingFlags.push("HbA1c result not found in lab reports");
+  if (rxDocs.length > 0 && !allText.includes("follow-up"))
+    missingFlags.push("No follow-up consultation documents on record");
+  if (summaryDocs.length > 0 && !allText.includes("discharge"))
+    missingFlags.push("Discharge summary may lack key details");
+
+  if (missingFlags.length > 0){
+    insights.push({
+      type: "gap",
+      tag: "Missing or inconsistent information",
+      text: `The AI noticed: <b>${missingFlags.join("; ")}</b>.<br><br>Consider uploading these documents to get a more complete health picture.`,
+      sources: []
+    });
+  }
+
+  // 6. Care providers
+  const hospitals = [...new Set(docs.map(d => d.hospital).filter(Boolean))];
+  const doctors = [...new Set(docs.map(d => d.doctor).filter(Boolean))];
+  if (hospitals.length > 0 || doctors.length > 0){
+    insights.push({
+      type: "change",
+      tag: "Care providers",
+      text: `Hospitals on record: <b>${hospitals.join(", ") || "—"}</b>.<br>Doctors / surgeons: <b>${doctors.join(", ") || "—"}</b>.<br><br>Having a consistent care team helps track your health better.`,
+      sources: docs.map(d => d.id)
+    });
+  }
+
+  // 7. Source provenance
+  insights.push({
+    type: "change",
+    tag: "🔒 Source provenance",
+    text: `All <b>${docs.length} documents</b> are stored securely in your browser. Each fact links back to its original upload — nothing is inferred without a source.`,
+    sources: docs.map(d => d.id)
+  });
+
+  return insights;
+}
+
+/* ================================================================
+   HOSPITAL SEARCH
+================================================================ */
+function refreshHospitalsPage(){
+  const list = document.getElementById("allHospitals");
+  if (list){
+    list.innerHTML = HOSPITALS.map(h => `
+      <div class="doc-item" style="cursor:pointer" onclick="selectHospital('${h.name.replace(/'/g,"\\'")}')">
+        <div class="thumb">${h.icon}</div>
+        <div class="meta">
+          <b>${escapeHtml(h.name)}</b>
+          <small>📍 ${escapeHtml(h.city)} · ${h.specialities.length} specialities</small>
+        </div>
+        <div class="actions">
+          <button>View details</button>
+        </div>
+      </div>`).join("");
+  }
+}
+
+function searchHospitals(query){
+  const sug = document.getElementById("hospSuggestions");
+  if (!sug) return;
+  const q = query.trim().toLowerCase();
+  if (!q){ sug.classList.remove("open"); sug.innerHTML = ""; return; }
+
+  const matches = HOSPITALS.filter(h =>
+    h.name.toLowerCase().includes(q) ||
+    h.city.toLowerCase().includes(q) ||
+    h.specialities.some(s => s.toLowerCase().includes(q))
+  );
+
+  if (matches.length === 0){
+    sug.innerHTML = `<div class="hosp-suggestion"><div class="h-info"><b>No hospitals found</b><small>Try a different search term</small></div></div>`;
+  } else {
+    sug.innerHTML = matches.map(h => `
+      <div class="hosp-suggestion" onclick="selectHospital('${h.name.replace(/'/g,"\\'")}')">
+        <div class="h-icon">${h.icon}</div>
+        <div class="h-info">
+          <b>${escapeHtml(h.name)}</b>
+          <small>📍 ${escapeHtml(h.city)} · ${h.specialities.slice(0,3).join(", ")}${h.specialities.length > 3 ? "…" : ""}</small>
+        </div>
+      </div>`).join("");
+  }
+  sug.classList.add("open");
+}
+
+function selectHospital(name){
+  const h = HOSPITALS.find(x => x.name === name);
+  if (!h) return;
+  document.getElementById("hospSearch").value = h.name;
+  document.getElementById("hospSuggestions").classList.remove("open");
+
+  const detail = document.getElementById("hospDetail");
+  detail.innerHTML = `
+    <h3>${h.icon} ${escapeHtml(h.name)}</h3>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:4px">📍 ${escapeHtml(h.city)}</p>
+    <p style="font-size:14px;margin-top:10px;font-weight:600;color:var(--primary)">Specialities offered:</p>
+    <div class="spec-list">
+      ${h.specialities.map(s => `<span class="spec-tag">${escapeHtml(s)}</span>`).join("")}
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:14px">
+      ℹ️ Always verify hospital details and specialities directly before planning a visit.
+    </p>
+  `;
+  detail.classList.add("open");
+}
+
+// Close suggestions when clicking outside
+document.addEventListener("click", (e) => {
+  const wrap = e.target.closest(".hosp-search-wrap");
+  if (!wrap){
+    const sug = document.getElementById("hospSuggestions");
+    if (sug) sug.classList.remove("open");
+  }
+});
+
+/* ================================================================
+   PROFILE
+================================================================ */
+function refreshProfilePage(){
+  if (!currentPatient) return;
+  const p = currentPatient;
+  const initials = (p.name || currentUser).split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+  document.getElementById("profileAvatar").textContent = initials || "👤";
+  document.getElementById("profileName").textContent = p.name || currentUser;
+  document.getElementById("profileSub").textContent =
+    [p.age ? p.age + " yrs" : "", p.sex === "F" ? "Female" : p.sex === "M" ? "Male" : p.sex === "O" ? "Other" : "",
+     p.hospital || "", p.doctor || ""].filter(Boolean).join(" · ") || "No details yet";
+
+  const docs = p.documents || [];
+  const events = p.events || [];
+  document.getElementById("profileStats").innerHTML = `
+    <div class="stat-box"><div class="num">${docs.length}</div><div class="lbl">Documents</div></div>
+    <div class="stat-box"><div class="num">${events.length}</div><div class="lbl">Events</div></div>
+    <div class="stat-box"><div class="num">${(p.insights||[]).length}</div><div class="lbl">Insights</div></div>
+  `;
+
+  document.getElementById("pUsername").textContent = currentUser;
+  document.getElementById("pName").textContent = p.name || "—";
+  document.getElementById("pAge").textContent = p.age || "—";
+  document.getElementById("pSex").textContent = p.sex === "F" ? "Female" : p.sex === "M" ? "Male" : p.sex === "O" ? "Other" : "—";
+  document.getElementById("pHospital").textContent = p.hospital || "—";
+  document.getElementById("pDoctor").textContent = p.doctor || "—";
+  document.getElementById("pAccountType").textContent = (p.accountType || "patient").charAt(0).toUpperCase() + (p.accountType || "patient").slice(1);
+  document.getElementById("pSignMethod").textContent = (p.signMethod || "—").charAt(0).toUpperCase() + (p.signMethod || "").slice(1);
+
+  document.getElementById("editName").value = p.name || "";
+  document.getElementById("editAge").value = p.age || "";
+  document.getElementById("editSex").value = p.sex || "";
+  document.getElementById("editHospital").value = p.hospital || "";
+  document.getElementById("editDoctor").value = p.doctor || "";
+  document.getElementById("accountTypeSelect").value = p.accountType || "patient";
+
+  // Theme swatches
+  document.querySelectorAll(".theme-swatch").forEach(s => {
+    s.classList.toggle("active", s.dataset.theme === (p.theme || "default"));
+  });
+}
+
+function enableProfileEdit(){
+  document.getElementById("profileEditCard").style.display = "block";
+  document.getElementById("profileEditCard").scrollIntoView({behavior:"smooth"});
+}
+function disableProfileEdit(){
+  document.getElementById("profileEditCard").style.display = "none";
+}
+function saveProfile(e){
+  e.preventDefault();
+  currentPatient.name = document.getElementById("editName").value.trim() || currentPatient.name;
+  currentPatient.age = document.getElementById("editAge").value;
+  currentPatient.sex = document.getElementById("editSex").value;
+  currentPatient.hospital = document.getElementById("editHospital").value.trim();
+  currentPatient.doctor = document.getElementById("editDoctor").value.trim();
+  db.users[currentUser] = currentPatient;
+  saveDB(db);
+  updateChipName();
+  refreshProfilePage();
+  refreshDashboard();
+  disableProfileEdit();
+  toast("✅ Profile updated");
+}
+
+/* ================================================================
+   THEME
+================================================================ */
+function setTheme(theme){
+  currentTheme = theme;
+  applyTheme(theme);
+  if (currentPatient){
+    currentPatient.theme = theme;
+    db.users[currentUser] = currentPatient;
+    saveDB(db);
+    refreshProfilePage();
+  }
+  toast(`🎨 Theme changed to ${theme}`);
+}
+function applyTheme(theme){
+  document.body.dataset.theme = theme;
+}
+function setAccountType(type){
+  currentAccountType = type;
+  document.body.dataset.account = type;
+  if (currentPatient){
+    currentPatient.accountType = type;
+    db.users[currentUser] = currentPatient;
+    saveDB(db);
+    refreshProfilePage();
+  }
+  toast(`👤 Account type: ${type}`);
+}
+
+/* ================================================================
+   DOCUMENT MODAL
+================================================================ */
+function openDoc(docId){
+  if (!currentPatient) return;
+  const doc = (currentPatient.documents || []).find(d => d.id === docId);
+  if (!doc){ toast("Document not found"); return; }
+
+  document.getElementById("modalTitle").textContent = getDocIcon(doc.type) + " " + doc.title;
+  document.getElementById("modalMeta").textContent =
+    `📅 ${doc.date} · ${doc.hospital || "No hospital"} · ${doc.doctor || "No doctor"}`;
+
+  let filePreview = "";
+  if (doc.fileData && doc.fileType && doc.fileType.startsWith("image/")){
+    filePreview = `<div style="margin-top:16px"><div style="font-size:13px;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-weight:700">📎 File Preview</div><img src="${doc.fileData}" style="max-width:100%;border-radius:12px;border:2px solid var(--line)" /></div>`;
+  } else if (doc.fileName){
+    filePreview = `<div style="margin-top:16px;padding:14px;background:var(--primary-light);border-radius:12px;font-size:13px;color:var(--primary)">📎 Attached file: <b>${escapeHtml(doc.fileName)}</b> (${Math.round(doc.fileSize/1024)} KB)</div>`;
+  }
+
+  document.getElementById("modalBody").innerHTML = `
+    <div class="kv-grid">
+      <div class="kv"><b>Document Title</b><span class="val">${escapeHtml(doc.title)}</span></div>
+      <div class="kv"><b>Date</b><span class="val">${doc.date}</span></div>
+      <div class="kv"><b>Type</b><span class="val">${doc.type.toUpperCase()}</span></div>
+      <div class="kv"><b>Hospital</b><span class="val">${escapeHtml(doc.hospital || "—")}</span></div>
+      <div class="kv"><b>Doctor / Surgeon</b><span class="val">${escapeHtml(doc.doctor || "—")}</span></div>
+      <div class="kv"><b>Uploaded</b><span class="val">${new Date(doc.uploadedAt).toLocaleDateString()}</span></div>
+    </div>
+    ${doc.notes ? `<div style="margin-top:16px"><div style="font-size:13px;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-weight:700">📝 Notes / Findings</div><div style="background:#fafcfe;border:2px solid var(--line);border-radius:12px;padding:16px;font-size:14px;line-height:1.7">${escapeHtml(doc.notes)}</div></div>` : ""}
+    ${filePreview}
+    <div style="margin-top:20px;padding:14px 16px;border-radius:12px;background:var(--warn-bg);border:2px solid var(--line);color:var(--warn);font-size:13px;display:flex;gap:10px;align-items:flex-start">
+      <span style="font-size:18px">⚠️</span>
+      <div>This tool organizes your records — it is <b>not a diagnosis</b>. Always verify against the original document.</div>
+    </div>
+  `;
+  document.getElementById("modalBackdrop").classList.add("open");
+}
+function closeModal(){
+  document.getElementById("modalBackdrop").classList.remove("open");
+}
+
+/* ================================================================
+   AI BOT
+================================================================ */
+function toggleAiPanel(forceOpen){
+  aiOpen = forceOpen !== undefined ? forceOpen : !aiOpen;
+  document.getElementById("aiPanel").classList.toggle("open", aiOpen);
+  document.getElementById("aiNotif").style.display = "none";
+  if (aiOpen) setTimeout(() => document.getElementById("aiInput").focus(), 300);
+}
+
+function addAiMessage(text, isUser, sources){
+  const body = document.getElementById("aiBody");
+  const div = document.createElement("div");
+  div.className = "ai-msg " + (isUser ? "user" : "bot");
+  let html = text;
+  if (sources && sources.length){
+    html += `<br><span class="ai-src" onclick="openDoc('${sources[0]}')">📎 View source (${sources[0]})</span>`;
+  }
+  div.innerHTML = html;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+
+function askAi(query){
+  if (!query || !query.trim()) return;
+  if (!currentPatient){ addAiMessage("Please sign in first to access your health records.", false); return; }
+  const q = query.trim();
+  addAiMessage(q, true);
+  document.getElementById("aiInput").value = "";
+
+  setTimeout(() => {
+    const answer = generateAiAnswer(q);
+    addAiMessage(answer.text, false, answer.sources);
+  }, 400);
+}
+
+function generateAiAnswer(query){
+  const q = query.toLowerCase();
+  const p = currentPatient;
+  const docs = p.documents || [];
+
+  // Summarise
+  if (q.includes("summar") || q.includes("overview") || q.includes("tell me about")){
+    if (docs.length === 0) return { text: "You haven't uploaded any documents yet. Upload some and I'll summarise them for you!", sources: [] };
+    return { text: generateOverallSummary(p).replace(/<[^>]+>/g, "").slice(0, 500) + "…", sources: docs.map(d => d.id) };
+  }
+
+  // What am I suffering from
+  if (q.includes("suffering") || q.includes("condition") || q.includes("disease") || q.includes("problem") || q.includes("diagnos")){
+    const insights = p.insights || generateInsights(p);
+    const diagnosis = insights.find(i => i.type === "diagnosis");
+    if (diagnosis) return { text: diagnosis.text, sources: diagnosis.sources };
+    return { text: "I need more information to answer this. Please upload your lab reports, prescriptions, or discharge summaries so I can analyse them.", sources: [] };
+  }
+
+  // Care tips
+  if (q.includes("care") || q.includes("take care") || q.includes("advice") || q.includes("suggest") || q.includes("do")){
+    const insights = p.insights || generateInsights(p);
+    const diagnosis = insights.find(i => i.type === "diagnosis");
+    if (diagnosis){
+      const match = diagnosis.text.match(/<b>What you should take care of:<\/b>([\s\S]*?)<i>/);
+      if (match) return { text: "<b>💚 Care tips:</b>" + match[1], sources: diagnosis.sources };
+    }
+    return { text: "Here are some general tips:<br>• Keep all your medical documents in one place<br>• Track your medications and follow-ups<br>• Note any new symptoms<br>• Stay hydrated and get enough rest<br><br>Upload more documents so I can give personalised advice.", sources: [] };
+  }
+
+  // Missing info
+  if (q.includes("missing") || q.includes("gap") || q.includes("incomplete") || q.includes("not found")){
+    const insights = p.insights || generateInsights(p);
+    const gaps = insights.filter(i => i.type === "gap");
+    if (gaps.length) return { text: gaps.map(g => g.text).join("<br><br>"), sources: [] };
+    return { text: "I didn't find any obvious gaps in your records. Keep uploading documents as you receive them!", sources: [] };
+  }
+
+  // Medications
+  if (q.includes("medic") || q.includes("medicine") || q.includes("prescription") || q.includes("drug") || q.includes("tablet")){
+    const rx = docs.filter(d => d.type === "rx");
+    if (rx.length) return { text: `<b>💊 Your medications (${rx.length}):</b><br>` + rx.map(d => `• <b>${escapeHtml(d.title)}</b> — ${d.date}${d.notes ? " (" + escapeHtml(d.notes.slice(0,80)) + ")" : ""}`).join("<br>"), sources: rx.map(d => d.id) };
+    return { text: "No prescriptions found in your records. Upload your prescription documents and I'll list them.", sources: [] };
+  }
+
+  // Hospital / doctor
+  if (q.includes("hospital") || q.includes("doctor") || q.includes("surgeon") || q.includes("who")){
+    const hospitals = [...new Set(docs.map(d => d.hospital).filter(Boolean))];
+    const doctors = [...new Set(docs.map(d => d.doctor).filter(Boolean))];
+    if (hospitals.length || doctors.length){
+      return { text: `<b>🏥 Your care team:</b><br>Hospitals: <b>${hospitals.join(", ") || "—"}</b><br>Doctors / surgeons: <b>${doctors.join(", ") || "—"}</b>`, sources: docs.map(d => d.id) };
+    }
+    return { text: "I don't have hospital or doctor details yet. You can add them when uploading a document, or in your profile.", sources: [] };
+  }
+
+  // Open document
+  const openMatch = q.match(/(?:open|show|view|display)\s+(?:the\s+)?(.+)/i);
+  if (openMatch){
+    const term = openMatch[1].trim().toLowerCase();
+    const found = docs.find(d => d.title.toLowerCase().includes(term) || d.id.toLowerCase().includes(term));
+    if (found){
+      setTimeout(() => openDoc(found.id), 300);
+      return { text: `📄 Opening <b>${escapeHtml(found.title)}</b>…`, sources: [found.id] };
+    }
+    return { text: `I couldn't find a document matching "${escapeHtml(openMatch[1])}". Try another name.`, sources: [] };
+  }
+
+  // Help
+  if (q.includes("help") || q.includes("what can you")){
+    return { text: "I can help you with:<br>• <b>Summarise my records</b> — get an overview<br>• <b>What am I suffering from?</b> — AI health observation<br>• <b>What should I take care of?</b> — care tips<br>• <b>Any missing information?</b> — find gaps<br>• <b>My medications</b> — list prescriptions<br>• <b>My hospitals / doctors</b> — care team<br>• <b>Open [name]</b> — open a document<br><br>🎤 You can also use the mic!", sources: [] };
+  }
+
+  // Fallback
+  return { text: "I'm not sure how to answer that. Try asking:<br>• Summarise my records<br>• What am I suffering from?<br>• What should I take care of?<br>• Any missing information?<br><br>Type <b>help</b> for all commands.", sources: [] };
+}
+
+/* ================================================================
+   VOICE RECOGNITION
+================================================================ */
+function initSpeechRecognition(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
+  const rec = new SpeechRecognition();
+  rec.continuous = false;
+  rec.interimResults = false;
+  rec.lang = "en-US";
+  rec.onresult = function(event){
+    const transcript = event.results[0][0].transcript;
+    document.getElementById("aiInput").value = transcript;
+    askAi(transcript);
+  };
+  rec.onerror = function(event){
+    if (event.error === "not-allowed") addAiMessage("🎤 Microphone access denied. Please allow permissions or type your question.", false);
+    else if (event.error === "no-speech") addAiMessage("🎤 No speech detected. Please try again.", false);
+    stopListeningUI();
+  };
+  rec.onend = function(){ stopListeningUI(); };
+  return rec;
+}
+
+function toggleListening(){
+  if (!recognition){
+    recognition = initSpeechRecognition();
+    if (!recognition){ addAiMessage("🎤 Voice input isn't supported in this browser. Please type instead.", false); return; }
+  }
+  if (listening){
+    try { recognition.stop(); } catch(e){}
+    stopListeningUI();
+  } else {
+    try {
+      recognition.start();
+      listening = true;
+      document.getElementById("micBtn").classList.add("listening");
+      addAiMessage("🎤 Listening… speak now.", false);
+    } catch(e){
+      addAiMessage("🎤 Could not start voice input. Try again.", false);
+      stopListeningUI();
+    }
+  }
+}
+function stopListeningUI(){
+  listening = false;
+  document.getElementById("micBtn").classList.remove("listening");
+}
+
+/* ================================================================
+   HELPERS
+================================================================ */
+function escapeHtml(str){
+  if (!str) return "";
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+/* ================================================================
+   DRAG & DROP
+================================================================ */
+document.addEventListener("DOMContentLoaded", () => {
+  const zone = document.getElementById("uploadZone");
+  if (zone){
+    zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("dragover"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
+    zone.addEventListener("drop", e => {
+      e.preventDefault();
+      zone.classList.remove("dragover");
+      const file = e.dataTransfer.files[0];
+      if (file){
+        document.getElementById("fileInput").files = e.dataTransfer.files;
+        handleFileSelect({ target: { files: [file] } });
+      }
+    });
+  }
+});
+
+/* ================================================================
+   KEYBOARD
+================================================================ */
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeModal();
+  if (e.key === "/" && currentUser && !["INPUT","TEXTAREA"].includes(e.target.tagName)){
+    e.preventDefault();
+    toggleAiPanel(true);
+  }
+});
+
+/* ================================================================
+   INIT
+================================================================ */
+window.addEventListener("load", () => {
+  const sess = getSession();
+  if (sess && db.users[sess]){
+    currentUser = sess;
+    currentPatient = db.users[sess];
+    currentTheme = currentPatient.theme || "default";
+    currentAccountType = currentPatient.accountType || "patient";
+    applyTheme(currentTheme);
+    document.body.dataset.account = currentAccountType;
+    enterApp();
+  } else {
+    document.getElementById("page-intro").classList.add("active");
+  }
+});
+</script>
+</body>
+</html>
